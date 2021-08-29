@@ -3,6 +3,8 @@ module github.com/xelalexv/oqtadrive
 go 1.15
 
 require (
+	github.com/blevesearch/bleve/v2 v2.1.0
+	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gorilla/mux v1.8.0
 	github.com/jacobsa/go-serial v0.0.0-20180131005756-15cf729a72d4
 	github.com/sirupsen/logrus v1.8.1

@@ -36,6 +36,7 @@ import (
 
 	"github.com/xelalexv/oqtadrive/pkg/daemon"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
+	"github.com/xelalexv/oqtadrive/pkg/repo"
 )
 
 //
@@ -51,10 +52,13 @@ func NewAPIServer(addr, repo string, d *daemon.Daemon) APIServer {
 
 //
 type api struct {
+	//
 	address    string
 	repository string
-	daemon     *daemon.Daemon
-	server     *http.Server
+	//
+	daemon *daemon.Daemon
+	server *http.Server
+	index  *repo.Index
 	//
 	longPollQueue chan chan *Change
 }
@@ -76,9 +80,24 @@ func (a *api) Serve() error {
 	addRoute(router, "drivels", "GET", "/drive/{drive:[1-8]}/list", a.driveList)
 	addRoute(router, "resync", "PUT", "/resync", a.resync)
 	addRoute(router, "config", "PUT", "/config", a.config)
+	addRoute(router, "search", "GET", "/search", a.search)
 
 	router.PathPrefix("/").Handler(
 		requestLogger(http.FileServer(http.Dir("./ui/web/")), "webui"))
+
+	if a.repository != "" {
+		var err error
+		a.index, err = repo.NewIndex("oqtadrive.bleve", a.repository)
+		if err != nil {
+			log.Errorf("failed to open/create index: %v", err)
+		} else {
+			go func() {
+				if err := a.index.Start(); err != nil {
+					log.Errorf("error starting index: %v", err)
+				}
+			}()
+		}
+	}
 
 	addr := a.address
 	if len(strings.Split(addr, ":")) < 2 {
@@ -100,12 +119,21 @@ func (a *api) Serve() error {
 
 //
 func (a *api) Stop() error {
+
+	if a.index != nil {
+		log.Info("index stopping...")
+		a.index.Stop()
+		a.index = nil
+		log.Info("index stopped")
+	}
+
 	if a.server != nil {
 		log.Info("API server stopping...")
 		err := a.server.Shutdown(context.Background())
 		a.server = nil
 		return err
 	}
+
 	return nil
 }
 

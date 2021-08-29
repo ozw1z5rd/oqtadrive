@@ -6,6 +6,7 @@
 *.hex
 *.xcf
 *.sublime*
+*.bleve
 _build
 scratchpad
 .cache
