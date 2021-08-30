@@ -40,7 +40,7 @@ All steps in this section are performed on the target system, i.e. the *Raspberr
 For the impatient, here are all the steps that you would perform on the *Pi* setup after you installed the OS:
 
 ```
-sudo apt install jq gawk
+sudo apt install curl jq gawk
 cd
 curl -fsSL https://github.com/xelalexv/oqtadrive/raw/master/hack/Makefile -o Makefile
 PORT=/dev/ttyS0 make install patch_avrdude flash service_on
@@ -91,4 +91,4 @@ The installer `Makefile` has a few more targets you can invoke, and environment 
 
 - Fix the IP address of the *Pi* in your router, so you don't have to look it up each time you want to `ssh` into it.
 - For password-less login, you can also place your public *ssh* key in `/home/pi/.ssh/authorized_keys`.
-- You can add the environment variables you want to set such as `PORT` to the `.bashrc` of the `pi` user, so they're already set up when `ssh` into the *Pi*.
+- You can add the environment variables you want to set such as `PORT` to the `.bashrc` of the `pi` user, so they're already set up when you `ssh` into the *Pi*.

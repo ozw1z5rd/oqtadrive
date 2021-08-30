@@ -123,7 +123,7 @@ function build_binary {
     local suffix
     [[ "$2" != "windows" ]] || suffix=".exe"
 
-    local binary="${BINARIES}/$1"
+    local binary="${BINARIES}/$1${suffix}"
 
     local extra_env
     [[ "${arch}" != "arm" ]] || extra_env="-e GOARM=6"
@@ -139,7 +139,7 @@ function build_binary {
         -ldflags "-w -X main.OqtaDriveVersion=${OQTADRIVE_VERSION}" \
         -o "${binary}" "./cmd/$1/"
 
-    local specifier="_${OQTADRIVE_RELEASE}_$2_${arch}${suffix}"
+    local specifier="_${OQTADRIVE_RELEASE}_$2_${arch}"
     zip -j "../${binary}${specifier}.zip" "../${binary}"
 
     if [[ "$4" == "keep" ]]; then
