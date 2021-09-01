@@ -27,11 +27,6 @@ import (
 //
 func (a *api) config(w http.ResponseWriter, req *http.Request) {
 
-	item, err := getArg(req, "item")
-	if handleError(err, http.StatusUnprocessableEntity, w) {
-		return
-	}
-
 	arg1, err := getIntArg(req, "arg1")
 	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
@@ -43,7 +38,7 @@ func (a *api) config(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if handleError(
-		a.daemon.Configure(item, byte(arg1), byte(arg2)),
+		a.daemon.Configure(getArg(req, "item"), byte(arg1), byte(arg2)),
 		http.StatusUnprocessableEntity, w) {
 		return
 	}

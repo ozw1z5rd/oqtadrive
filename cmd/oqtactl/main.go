@@ -83,6 +83,9 @@ func main() {
 	case "map":
 		run.DieOnError(run.NewMap().Execute(args))
 
+	case "search":
+		run.DieOnError(run.NewSearch().Execute(args))
+
 	case "resync":
 		run.DieOnError(run.NewResync().Execute(args))
 

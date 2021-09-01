@@ -146,7 +146,8 @@ func (dw *DirWatcher) Stop() {
 
 //
 func (dw *DirWatcher) handleEvent(evt fsnotify.Event) {
-	log.Debugf("handling event: %v", evt)
+	log.WithFields(
+		log.Fields{"path": evt.Name, "op": evt.Op}).Debug("handling event")
 	if evt.Op == fsnotify.Create {
 		dw.addDir(evt.Name)
 	}
@@ -187,7 +188,7 @@ func (dw *DirWatcher) handleDir(
 					"error adding watch for directory '%s': %v", path, err)
 				return err
 			}
-			log.Debugf("watching directory '%s'", path)
+			log.WithField("path", path).Debug("starting directory watch")
 
 		}
 	} else {
@@ -196,7 +197,7 @@ func (dw *DirWatcher) handleDir(
 				"error removing watch for directory '%s': %v", path, err)
 			return err
 		}
-		log.Debugf("stopped watching directory '%s'", path)
+		log.WithField("path", path).Debug("stopping directory watch")
 	}
 
 	return nil

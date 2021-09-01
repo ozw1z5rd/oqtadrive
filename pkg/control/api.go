@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -204,11 +203,7 @@ func getDrive(w http.ResponseWriter, req *http.Request) int {
 
 //
 func getFormat(w http.ResponseWriter, req *http.Request) format.ReaderWriter {
-	arg, err := getArg(req, "type")
-	if handleError(err, http.StatusUnprocessableEntity, w) {
-		return nil
-	}
-	ret, err := format.NewFormat(arg)
+	ret, err := format.NewFormat(getArg(req, "type"))
 	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return nil
 	}
@@ -229,29 +224,20 @@ func getRef(req *http.Request) (string, error) {
 
 //
 func isFlagSet(req *http.Request, flag string) bool {
-	arg, _ := getArg(req, flag)
-	return arg == "true"
+	return getArg(req, flag) == "true"
 }
 
 //
-func getArg(req *http.Request, arg string) (string, error) {
-	ret := req.URL.Query().Get(arg)
-	if ret != "" {
-		return url.QueryUnescape(ret)
-	}
-	return ret, nil
+func getArg(req *http.Request, arg string) string {
+	return req.URL.Query().Get(arg)
 }
 
 //
 func getIntArg(req *http.Request, arg string) (int, error) {
-	if val, err := getArg(req, arg); err != nil {
+	if ret, err := strconv.Atoi(getArg(req, arg)); err != nil {
 		return -1, err
 	} else {
-		if ret, err := strconv.Atoi(val); err != nil {
-			return -1, err
-		} else {
-			return ret, nil
-		}
+		return ret, nil
 	}
 }
 

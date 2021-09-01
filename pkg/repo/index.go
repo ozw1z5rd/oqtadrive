@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
@@ -33,10 +34,20 @@ import (
 	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
-/*
-	FIXME:
-	- review log levels
-*/
+//
+const replaceChars = "`~!@#$%^&*_-+=()[]{}|;:',.<>?"
+
+var nameCleaner *strings.Replacer
+
+//
+func init() {
+	rep := make([]string, 2*len(replaceChars))
+	for ix, c := range replaceChars {
+		rep[ix*2] = string(c)
+		rep[ix*2+1] = " "
+	}
+	nameCleaner = strings.NewReplacer(rep...)
+}
 
 //
 func NewIndex(base, repo string) (*Index, error) {
@@ -50,32 +61,41 @@ func NewIndex(base, repo string) (*Index, error) {
 //
 func createOrOpen(base, repo string) (*Index, error) {
 
-	i := &Index{base: base, repo: repo}
-	logger := log.WithField("index", i.base)
+	var err error
+	i := &Index{}
+
+	if i.base, err = filepath.Abs(base); err != nil {
+		return nil, err
+	}
+	if i.repo, err = filepath.Abs(repo); err != nil {
+		return nil, err
+	}
+
+	logger := log.WithFields(log.Fields{"base": i.base, "repo": i.repo})
 
 	if _, err := os.Stat(i.base); err != nil {
 		if os.IsNotExist(err) {
-			logger.Info("creating repo index")
+			logger.Info("creating new index")
 			i.index, err = bleve.New(i.base, bleve.NewIndexMapping())
 		}
 
 		if err != nil {
-			logger.Errorf("cannot create repo index: %v", err)
+			logger.Errorf("cannot create index: %v", err)
 			return nil, err
 		}
 
-		logger.Info("repo index created")
+		logger.Info("new index created")
 		i.empty = true
 
 	} else {
-		logger.Info("opening repo index")
+		logger.Info("opening index")
 		i.index, err = bleve.Open(i.base)
 		if err != nil {
-			logger.Errorf("cannot open repo index: %v", err)
+			logger.Errorf("cannot open index: %v", err)
 			return nil, err
 		}
 
-		logger.Info("repo index opened")
+		logger.Info("index opened")
 	}
 
 	i.batch = i.index.NewBatch()
@@ -105,16 +125,20 @@ type Index struct {
 func (i *Index) Start() error {
 
 	start := time.Now()
+	log.Info("pruning index")
 	if err := i.prune(); err != nil {
 		return fmt.Errorf("error pruning index: %v", err)
 	}
-	log.Infof("pruning took %v", time.Now().Sub(start))
+	log.WithField(
+		"duration", time.Now().Sub(start)).Info("index pruning finished")
 
 	start = time.Now()
+	log.Info("updating index")
 	if err := i.update(); err != nil {
 		return fmt.Errorf("error updating index: %v", err)
 	}
-	log.Infof("update took %v", time.Now().Sub(start))
+	log.WithField(
+		"duration", time.Now().Sub(start)).Info("index update finished")
 
 	if err := i.startWatching(); err != nil {
 		return fmt.Errorf("error starting repo watcher: %v", err)
@@ -149,9 +173,6 @@ func (i *Index) prune() error {
 		return nil
 	}
 
-	logger := log.WithField("index", i.base)
-	logger.Info("pruning deleted index entries")
-
 	ix, err := i.index.Advanced()
 	if err != nil {
 		return err
@@ -182,7 +203,7 @@ func (i *Index) prune() error {
 			return err
 		}
 		if _, err := os.Stat(filepath.Join(i.repo, id)); os.IsNotExist(err) {
-			i.removeEntry(id, true)
+			i.removeEntry(id)
 		}
 	}
 }
@@ -190,13 +211,11 @@ func (i *Index) prune() error {
 //
 func (i *Index) update() error {
 
-	log.WithField("index", i.base).Info("updating index")
-
 	var lastMod time.Time
 	if !i.empty {
 		if store, err := os.Stat(filepath.Join(i.base, "store")); err == nil {
 			lastMod = store.ModTime()
-			log.Infof("last mod time: %v", lastMod)
+			log.Debugf("last index mod time: %v", lastMod)
 		}
 	}
 
@@ -211,7 +230,7 @@ func (i *Index) update() error {
 			}
 
 			if !info.IsDir() && info.ModTime().After(lastMod) {
-				i.addEntry(path[len(i.repo):], true)
+				i.addEntry(i.makeRelative(path))
 			}
 
 			return nil
@@ -220,10 +239,9 @@ func (i *Index) update() error {
 
 //
 func (i *Index) startWatching() error {
-	log.WithField("index", i.base).Info("starting repo watcher")
+	log.Info("starting index repo watcher")
 	var err error
-	i.watcher, err = util.NewDirWatcher(i.repo)
-	if err != nil {
+	if i.watcher, err = util.NewDirWatcher(i.repo); err != nil {
 		return err
 	}
 	return i.watcher.Start(5*time.Second, i.watchEvent, i.flushEvent)
@@ -232,29 +250,25 @@ func (i *Index) startWatching() error {
 //
 func (i *Index) watchEvent(evt fsnotify.Event) error {
 
-	rel := evt.Name[len(i.repo):]
-	logger := log.WithFields(log.Fields{
-		"path": rel,
-		"op":   evt.Op,
-	})
-	logger.Info("repo update")
+	rel := i.makeRelative(evt.Name)
+	log.WithFields(log.Fields{"path": rel, "op": evt.Op}).Debug("index update")
 
 	switch evt.Op {
 
 	case fsnotify.Create:
 		if info, err := os.Stat(evt.Name); err != nil {
-			logger.Errorf("cannot add new entry: %v", err)
+			log.Errorf("cannot add new entry: %v", err)
 		} else if !info.IsDir() {
-			i.addEntry(rel, false)
+			i.addEntry(rel)
 		}
 
 	case fsnotify.Rename:
 		fallthrough
 	case fsnotify.Remove:
-		i.removeEntry(rel, false)
+		i.removeEntry(rel)
 
 	default:
-		logger.Info("no action required")
+		log.Debug("no index update required")
 	}
 
 	return nil
@@ -262,19 +276,17 @@ func (i *Index) watchEvent(evt fsnotify.Event) error {
 
 //
 func (i *Index) flushEvent() error {
-	log.Debug("flushing pending index actions")
 	return i.batched(true)
 }
 
 //
-func (i *Index) addEntry(path string, quiet bool) error {
+func (i *Index) addEntry(path string) error {
 
 	logger := log.WithField("file", path)
-	if !quiet {
-		logger.Info("adding new entry to index")
-	}
+	logger.Debug("adding new entry to index")
 
-	if err := i.batch.Index(path, Entry{Name: path}); err != nil {
+	if err := i.batch.Index(
+		path, Entry{Name: nameCleaner.Replace(path)}); err != nil {
 		logger.Errorf("failed to batch entry add: %v", err)
 		return err
 	}
@@ -283,15 +295,9 @@ func (i *Index) addEntry(path string, quiet bool) error {
 }
 
 //
-func (i *Index) removeEntry(path string, quiet bool) error {
-
-	logger := log.WithField("file", path)
-	if !quiet {
-		logger.Info("removing deleted entry from index")
-	}
-
+func (i *Index) removeEntry(path string) error {
+	log.WithField("file", path).Debug("removing deleted entry from index")
 	i.batch.Delete(path)
-
 	return i.batched(false)
 }
 
@@ -300,6 +306,7 @@ func (i *Index) removeEntry(path string, quiet bool) error {
 func (i *Index) batched(flush bool) error {
 
 	if i.batchCount++; flush || i.batchCount > 100 {
+		log.Debug("flushing pending index actions")
 		if err := i.index.Batch(i.batch); err != nil {
 			log.Errorf("failed to execute index batch: %v", err)
 			return err
@@ -312,12 +319,16 @@ func (i *Index) batched(flush bool) error {
 }
 
 //
-func (i *Index) Search(term string) ([]string, error) {
+func (i *Index) Search(term string, max int) ([]string, error) {
+
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return nil, fmt.Errorf("no search term")
+	}
 
 	log.Debugf("searching for '%s'", term)
-
 	query := bleve.NewQueryStringQuery(term)
-	search := bleve.NewSearchRequest(query)
+	search := bleve.NewSearchRequestOptions(query, max, 0, false)
 	res, err := i.index.Search(search)
 	if err != nil {
 		return nil, err
@@ -329,4 +340,12 @@ func (i *Index) Search(term string) ([]string, error) {
 	}
 
 	return ret, nil
+}
+
+//
+func (i *Index) makeRelative(path string) string {
+	if len(path) > len(i.repo) && strings.HasPrefix(path, i.repo) {
+		return path[len(i.repo)+1:]
+	}
+	return path
 }

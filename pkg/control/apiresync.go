@@ -30,13 +30,9 @@ import (
 //
 func (a *api) resync(w http.ResponseWriter, req *http.Request) {
 
-	arg, err := getArg(req, "client")
-	if handleError(err, http.StatusUnprocessableEntity, w) {
-		return
-	}
-
 	var cl client.Client = client.UNKNOWN
 
+	arg := getArg(req, "client")
 	if arg != "" {
 		if cl = client.GetClient(arg); cl == client.UNKNOWN {
 			handleError(fmt.Errorf("unknown client type: %s", arg),

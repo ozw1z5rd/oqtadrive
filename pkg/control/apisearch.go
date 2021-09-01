@@ -25,13 +25,8 @@ import (
 	"net/http"
 )
 
-//
+// FIXME: JSON return
 func (a *api) search(w http.ResponseWriter, req *http.Request) {
-
-	arg, err := getArg(req, "term")
-	if handleError(err, http.StatusUnprocessableEntity, w) {
-		return
-	}
 
 	if a.index == nil {
 		handleError(fmt.Errorf("search index not available"),
@@ -39,7 +34,7 @@ func (a *api) search(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res, err := a.index.Search(arg)
+	res, err := a.index.Search(getArg(req, "term"), 100) // FIXME: parameterize
 	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
 	}

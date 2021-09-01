@@ -60,12 +60,7 @@ func (a *api) load(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	arg, err := getArg(req, "name")
-	if handleError(err, http.StatusUnprocessableEntity, w) {
-		return
-	}
-	params := map[string]interface{}{"name": arg}
-
+	params := map[string]interface{}{"name": getArg(req, "name")}
 	cart, err := reader.Read(in, true, isFlagSet(req, "repair"), params)
 	if err != nil {
 		handleError(fmt.Errorf("cartridge corrupted: %v", err),
