@@ -53,6 +53,9 @@
                         <a class="nav-link" id="files-tab" href="#files"
                            data-bs-toggle="tab" data-bs-target="#files" role="tab"
                            aria-controls="files" aria-selected="false">Files</a>
+                        <a class="nav-link" id="repo-tab" href="#repo"
+                           data-bs-toggle="tab" data-bs-target="#repo" role="tab"
+                           aria-controls="repo" aria-selected="false">Repo</a>
                         <a class="nav-link" id="about-tab" href="#about"
                            data-bs-toggle="tab" data-bs-target="#about" role="tab"
                            aria-controls="about" aria-selected="false">About</a>
@@ -122,10 +125,26 @@ to open its file list.</pre>
 
                     </div>
 
+                    <div class="tab-pane fade mt-2" id="repo" role="tabpanel"
+                         aria-labelledby="repo-tab">
+
+                        <div class="container features mt-1 mb-2">
+                            <input type="search" id="repo-search" name="rs" incremental="true"
+                                   onsearch="search(this)" aria-label="search the daemon repo">
+                            <button type="button" id="btSearch" class="btn btn-outline-light" onclick="search(this)">
+                                <i class="bi-search"></i>
+                            </button>
+                            <p></p>
+                            <ul id="search-results" class="list-group list-group-flush">
+                            </ul>
+                        </div>
+
+                    </div>
+
                     <div class="tab-pane fade mt-2" id="about" role="tabpanel"
                          aria-labelledby="about-tab">
                         <p align="left"><i>OqtaDrive</i> - Sinclair Microdrive emulator,
-                        Copyright (c) 2021, Alexander Vollschwitz<p>
+                        Copyright (c) 2021, Alexander Vollschwitz</p>
                         <p align="left">This web UI was built with <a href="https://getbootstrap.com/">Bootstrap</a> and <a href="https://icons.getbootstrap.com/">Bootstrap Icons</a>. It is an early
                         &alpha;-version, and does not yet cover all <i>OqtaDrive</i> APIs. Things may not
                         behave as you might expect! &#x1F601;</p>

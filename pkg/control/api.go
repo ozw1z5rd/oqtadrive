@@ -233,9 +233,14 @@ func getArg(req *http.Request, arg string) string {
 }
 
 //
-func getIntArg(req *http.Request, arg string) (int, error) {
-	if ret, err := strconv.Atoi(getArg(req, arg)); err != nil {
-		return -1, err
+func getIntArg(req *http.Request, arg string, def int) (int, error) {
+	if val := getArg(req, arg); val == "" {
+		if def > -1 {
+			return def, nil
+		}
+		return -1, fmt.Errorf("int argument not set: %s", arg)
+	} else if ret, err := strconv.Atoi(val); err != nil {
+		return def, err
 	} else {
 		return ret, nil
 	}

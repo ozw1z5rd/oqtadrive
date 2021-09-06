@@ -27,12 +27,12 @@ import (
 //
 func (a *api) config(w http.ResponseWriter, req *http.Request) {
 
-	arg1, err := getIntArg(req, "arg1")
+	arg1, err := getIntArg(req, "arg1", -1)
 	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
 	}
 
-	arg2, err := getIntArg(req, "arg2")
+	arg2, err := getIntArg(req, "arg2", -1)
 	if err != nil {
 		arg2 = 0
 	}

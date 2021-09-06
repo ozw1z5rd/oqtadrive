@@ -50,12 +50,12 @@ func (a *api) getDriveMap(w http.ResponseWriter, req *http.Request) {
 //
 func (a *api) setDriveMap(w http.ResponseWriter, req *http.Request) {
 
-	start, err := getIntArg(req, "start")
+	start, err := getIntArg(req, "start", -1)
 	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
 	}
 
-	end, err := getIntArg(req, "end")
+	end, err := getIntArg(req, "end", -1)
 	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
 	}

@@ -56,9 +56,8 @@ function buildList(drives) {
         };
         fc.onchange = function() {
             var name = this.files[0].name;
-            var lastDot = name.lastIndexOf('.');
-            var ext = name.substring(lastDot + 1);
-            upload(this.id.substring(2), ext, this.files[0]);
+            upload(this.id.substring(2), getName(name), getFormat(name),
+                this.files[0], false);
         };
         row.appendChild(fc);
 
@@ -71,7 +70,10 @@ function buildList(drives) {
         bt.type = 'button';
         bt.value = i;
         bt.onclick = function() {
-            document.getElementById('fc' + this.id.substring(2)).click();
+            var drive = this.id.substring(2);
+            if (!loadSelectedSearchItem(drive)) {
+                document.getElementById('fc' + drive).click();
+            }
         };
         configureButton(bt, drives[i-1]);
         div.appendChild(bt);
@@ -154,12 +156,6 @@ function showFiles(drive) {
 }
 
 //
-async function showTab(t) {
-    var triggerEl = document.querySelector('a[data-bs-target="#' + t + '"]');
-    bootstrap.Tab.getOrCreateInstance(triggerEl).show();
-}
-
-//
 function updateFileList(drive, data) {
 
     var div = document.getElementById('fileList');
@@ -217,27 +213,6 @@ function operateDriveDo(drive, action, path) {
 }
 
 //
-function userConfirm(title, question, callback) {
-
-    var mod = document.getElementById('modal');
-    mod.querySelector('.modal-title').textContent = title;
-    mod.querySelector('.modal-body').textContent = question;
-
-    var modInst = new bootstrap.Modal(mod, null);
-
-    mod.querySelector('.btn-primary').onclick = function() {
-        modInst.hide();
-        callback(true);
-    };
-    mod.querySelector('.btn-secondary').onclick = function() {
-        modInst.hide();
-        callback(false);
-    };
-
-    modInst.show();
-}
-
-//
 function configureButton(bt, data) {
     bt.disabled = (data.status == 'busy' || data.status == 'hardware');
 }
@@ -274,13 +249,18 @@ function setStatusIcon(it, data) {
 }
 
 //
-function upload(drive, format, file) {
+function upload(drive, name, format, data, isRef) {
 
-    var path = '/drive/' + drive + '?type=' + format + '&repair=true';
+    var path = '/drive/' + drive + '?type=' + format + '&repair=true&name='
+        + encodeURIComponent(name);
+
+    if (isRef) {
+        path += "&ref=true"
+    }
 
     fetch(path, {
         method: 'PUT',
-        body: file
+        body: data
     }).then(
         response => response.json()
     ).then(
@@ -326,7 +306,127 @@ async function subscribe() {
     await subscribe();
 }
 
+//
+function setupSearch() {
+
+    var keyword = document.getElementById('repo-search');
+    keyword.addEventListener('keyup', function() {
+        keyupStack.push(1);
+        setTimeout(function() {
+            keyupStack.pop();
+            if (keyupStack.length === 0) {
+                search(this.value);
+            }
+        }.bind(this), 600);
+    });
+}
+
+//
+function search(term) {
+
+    fetch('/search?items=25&term=' + term, {
+        headers: {
+            'Content-Type': 'text'
+        }
+    }).then(
+        response => response.text()
+    ).then(
+        data => updateSearchResults(data)
+    ).catch(
+        err => console.log('error: ' + err)
+    );
+}
+
+//
+function updateSearchResults(data) {
+
+    var list = document.getElementById('search-results');
+    list.textContent = null;
+
+    data.split("\n").forEach(function(l) {
+        if (l == "") {
+            return;
+        }
+        var li = document.createElement('li');
+        li.className = "list-group-item text-white bg-dark";
+        li.align = "left";
+        li.onclick = function() {
+            searchItemSelected(this.innerHTML);
+        }
+        li.appendChild(document.createTextNode(l));
+        list.appendChild(li);
+    });
+}
+
+//
+function searchItemSelected(item) {
+    userConfirm("Load cartridge?",
+        "Confirm & click the load button of the drive into which you want to load.",
+        function(confirmed) {
+            if (confirmed) {
+                selectedSearchItem = "repo://" + item;
+                showTab('drives');
+            } else {
+                selectedSearchItem = "";
+            }
+        });
+}
+
+//
+function loadSelectedSearchItem(drive) {
+    if (selectedSearchItem == "") {
+        return false;
+    }
+    upload(drive, getName(selectedSearchItem), getFormat(selectedSearchItem),
+        selectedSearchItem, true);
+    selectedSearchItem = "";
+    return true;
+}
+
+//
+function getFormat(file) {
+    var lastDot = file.lastIndexOf('.');
+    return file.substring(lastDot + 1);
+}
+
+//
+function getName(path) {
+    var lastSlash = path.lastIndexOf('/');
+    var name = path.substring(lastSlash + 1);
+    var lastDot = name.lastIndexOf('.');
+    return name.substring(0, lastDot);
+}
+
+//
+function userConfirm(title, question, callback) {
+
+    var mod = document.getElementById('modal');
+    mod.querySelector('.modal-title').textContent = title;
+    mod.querySelector('.modal-body').textContent = question;
+
+    var modInst = new bootstrap.Modal(mod, null);
+
+    mod.querySelector('.btn-primary').onclick = function() {
+        modInst.hide();
+        callback(true);
+    };
+    mod.querySelector('.btn-secondary').onclick = function() {
+        modInst.hide();
+        callback(false);
+    };
+
+    modInst.show();
+}
+
+//
+async function showTab(t) {
+    var triggerEl = document.querySelector('a[data-bs-target="#' + t + '"]');
+    bootstrap.Tab.getOrCreateInstance(triggerEl).show();
+}
+
 // ----------------------------------------------------------------------------
+
+var selectedSearchItem = "";
 
 fetch('/list', {
     headers: {
@@ -367,5 +467,8 @@ bt.onclick = function() {
     operateDrive(this.name, 'unload');
 };
 bt.disabled = true;
+
+var keyupStack = [];
+setupSearch()
 
 subscribe();

@@ -34,7 +34,12 @@ func (a *api) search(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	res, err := a.index.Search(getArg(req, "term"), 100) // FIXME: parameterize
+	items, err := getIntArg(req, "items", 100)
+	if handleError(err, http.StatusUnprocessableEntity, w) {
+		return
+	}
+
+	res, err := a.index.Search(getArg(req, "term"), items)
 	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
 	}

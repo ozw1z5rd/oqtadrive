@@ -32,7 +32,7 @@ func NewSearch() *Search {
 
 	s := &Search{}
 	s.Runner = *NewRunner(
-		"search [-a|--address {address}] -t|--term {search term}",
+		"search [-a|--address {address}] -t|--term {search term} [-i|--items {max results}]",
 		"search for cartridges in daemon repo",
 		`
 Use the search command to find cartridges in the daemon's repository, if enabled.`,
@@ -41,6 +41,8 @@ Use the search command to find cartridges in the daemon's repository, if enabled
 	s.AddBaseSettings()
 	s.AddSetting(&s.Term, "term", "t", "", nil,
 		"search term; used to search through the cartridge file names", true)
+	s.AddSetting(&s.Items, "items", "i", "", 100,
+		"max number of search results to return", false)
 
 	return s
 }
@@ -49,7 +51,8 @@ Use the search command to find cartridges in the daemon's repository, if enabled
 type Search struct {
 	Runner
 	//
-	Term string
+	Term  string
+	Items int
 }
 
 //
@@ -58,7 +61,8 @@ func (s *Search) Run() error {
 	s.ParseSettings()
 
 	resp, err := s.apiCall("GET",
-		fmt.Sprintf("/search?term=%s", url.QueryEscape(s.Term)), false, nil)
+		fmt.Sprintf("/search?items=%d&term=%s", s.Items, url.QueryEscape(s.Term)),
+		false, nil)
 	if err != nil {
 		return err
 	}
