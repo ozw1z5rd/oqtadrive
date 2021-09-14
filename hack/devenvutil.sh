@@ -150,6 +150,23 @@ function build_binary {
 }
 
 #
+# $...  names of JavaScript files to include (without path); order matters
+#
+function minify_js {
+
+    local oqta="${UI_BASE}/js/oqta.js"
+
+    pushd "${UI_BASE}/js/oqta" > /dev/null || return 1
+    cat "$@" > "${oqta}"
+    popd > /dev/null || return 1
+
+    docker run --rm --user "$(id -u):$(id -g)" -v "${UI_BASE}/js:/data" -w /data \
+        "${JSMINIFY_IMAGE}" minify -o oqta.min.js oqta.js
+
+    rm -f "${oqta}"
+}
+
+#
 #
 #
 function download_oqtactl {

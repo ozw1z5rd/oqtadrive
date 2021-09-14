@@ -5,7 +5,9 @@
 ## TL;DR
 *OqtaDrive* emulates a bank of up to 8 *Microdrives* for use with a *Sinclair Spectrum* (with *Interface 1*) or *QL* machine. The goal is to functionally create a *faithful* reproduction of the original. That is, on the *Spectrum*/*QL* side, operating the emulated *Microdrives* should feel exactly the same as using the real thing.
 
-*OqtaDrive* is built around an *Arduino Nano* that connects via its GPIO ports to the *Microdrive* interface and via serial connection to a daemon running on a host machine. This daemon host could be anything, ranging from your PC to a small embedded board such as a *RaspberryPi Zero*, as long as it can run a supported OS (*Linux*, *MacOS*, *Windows*). The same *Nano* can be used with both *Spectrum* and *QL*, without any reconfiguration. While the *Nano* is essentially a low-level protocol converter, the daemon takes care of storing and managing the *cartridges*. It additionally exposes an HTTP API endpoint. A few shell commands are provided that use this API and let you control the daemon, e.g. load and save cartridges into/from the virtual drives. A web UI is available as well.
+*OqtaDrive* is built around an *Arduino Nano* that connects via its GPIO ports to the *Microdrive* interface and via serial connection to a daemon running on a host machine. This daemon host could be anything, ranging from your PC to a small embedded board such as a *RaspberryPi Zero*, as long as it can run a supported OS (*Linux*, *MacOS*, *Windows*). The same *Nano* can be used with both *Spectrum* and *QL*, without any reconfiguration.
+
+While the *Nano* is essentially a low-level protocol converter, the daemon takes care of storing and managing the *cartridges*. It additionally exposes an HTTP API endpoint. A few shell commands are provided that use this API and let you control the daemon, e.g. load and save cartridges into/from the virtual drives. A web UI is available as well.
 
 ## What Can I Do With This?
 *OqtaDrive*'s architecture makes it very flexible, so many setups are possible. The simplest one would be just the *Nano* that connects your *Interface 1* or *QL* with your PC, and you manage everything from there. This configuration also [fits nicely into the case of an *Interface 1*](https://github.com/xelalexv/oqtadrive/discussions/15). If you're rather looking for a stand-alone solution, you could for example run the daemon on a *RaspberryPi Zero W*, [put it on a PCB together with the *Nano*](https://tomdalby.com/other/oqtadrive.html), and place this into a *Microdrive* or 3D printed case. The *Pi* would connect to your WiFi and you can control *OqtaDrive* from anywhere in your network.
@@ -19,8 +21,10 @@ Due to the minimal hardware required, *OqtaDrive* is also very cost-efficient. I
 - Control daemon via command line interface and web UI
 - Load & save from/to *MDR* and *MDV* formatted cartridge files
 - For *Spectrum*, *Z80* snapshot files can be directly loaded, no additional software required. Big thanks to Tom Dalby for open-sourcing [Z80onMDR Lite](https://github.com/TomDDG/Z80onMDR_lite)!
+- Store your cartridge collection on the daemon host and [search & load](doc/repo.md) from any client
 - List virtual drives & contents of cartridges
 - Hex dump cartridge contents for inspection
+- [Install script](doc/install.md) for *Linux*
 
 Here's a short [demo video](https://www.babbletower.net/forums/spectrum/microdrive/oqtadrive-demo.mp4) showing *OqtaDrive* & a *Spectrum* in action, doing a *Microdrive* test with the original *Sinclair* demo cartridge image, and a cartridge format.
 
@@ -153,7 +157,7 @@ Daemon logging behavior can be changed with these environment variables:
 | `LOG_METHODS` | include method names in log messages | `true`, `false` |
 
 ### Control Actions
-The daemon also serves an HTTP control API on port `8888` (can be changed with `--address` option). This is the integration point for any tooling, such as the provided command line actions. The most important ones are:
+The daemon also serves an HTTP control API on port `8888` (can be changed with `--address` option). This is the integration point for any tooling, such as the provided command line actions and the web UI. The most important ones are:
 
 - load cartridge: `oqtactl load -d {drive} -i {file}`
 - save cartridge: `oqtactl save -d {drive} -o {file}`
@@ -161,6 +165,14 @@ The daemon also serves an HTTP control API on port `8888` (can be changed with `
 - list cartridge content: `oqtactl ls -d {drive}` or `oqtactl ls -i {file}`
 
 `load` & `save` currently support `.mdr` and `.mdv` formatted files. I've only tested loading a very limited number of cartridge files available out there though, so there may be surprises. For the *Spectrum* `load` can also load *Z80* snapshot files into the daemon, converting them to *MDR* on the fly.
+
+#### Load by Reference
+In addition to uploading a cartridge file to the daemon in order to load it into a virtual drive, it is also possible to just send a *reference* to it. Simply provide this reference instead of the path to the cartridge file. The daemon will then retrieve it accordingly. The type of reference is indicated by a *schema prefix*, and determines how the cartridge will be fetched:
+
+| reference schema | notes                                                    |
+|------------------|----------------------------------------------------------|
+| `repo://`  | The cartridge is located in the daemon's *cartridge repository*. The remainder of the reference is the path to the cartridge, relative to the repo root folder. Check the [repo guide](doc/repo.md) to find out how to set up your repo. |
+| `http://` or `https://` | ( *Not yet implemented!* ) This type of reference is a URL to a cartridge file. The daemon will retrieve it from this location. Note that the daemon needs to have Internet access for this to work. |
 
 ### Web UI
 When the `ui` folder containing the web UI assets was deployed on the daemon host alongside the `oqtactl` binary, the daemon will serve the web UI on `http://{daemon host}:8888/` (port can be changed with `--address` option).

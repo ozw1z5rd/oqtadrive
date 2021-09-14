@@ -60,6 +60,7 @@ type api struct {
 	index  *repo.Index
 	//
 	longPollQueue chan chan *Change
+	forceNotify   chan bool
 }
 
 //
@@ -86,7 +87,7 @@ func (a *api) Serve() error {
 
 	if a.repository != "" {
 		var err error
-		a.index, err = repo.NewIndex("oqtadrive.bleve", a.repository)
+		a.index, err = repo.NewIndex("repo.index", a.repository)
 		if err != nil {
 			log.Errorf("failed to open/create index: %v", err)
 		} else {
@@ -107,6 +108,7 @@ func (a *api) Serve() error {
 	a.server = &http.Server{Addr: addr, Handler: router}
 
 	a.longPollQueue = make(chan chan *Change)
+	a.forceNotify = make(chan bool, 1)
 	go a.watchDaemon()
 
 	err := a.server.ListenAndServe()

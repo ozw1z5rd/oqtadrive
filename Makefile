@@ -22,7 +22,7 @@
 SHELL = /bin/bash
 
 REPO = oqtadrive
-OQTADRIVE_RELEASE = 0.2.1-wip
+OQTADRIVE_RELEASE = 0.2.1-rc1
 OQTADRIVE_VERSION := $(shell git describe --always --tag --dirty)
 
 ROOT = $(shell pwd)
@@ -30,8 +30,10 @@ BUILD_OUTPUT = _build
 BINARIES = $(BUILD_OUTPUT)/bin
 ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
+UI_BASE = $(ROOT)/ui/web
 
-GO_IMAGE = golang:1.17.0-buster@sha256:b6fe2cc154c1be5fe9dbd7cf5f23f5f48126946762d5ab547ed9a5d2f7562fa3
+GO_IMAGE = golang:1.17.1-buster@sha256:2a0bd53951c1b1746c5adab10e1db1495cc6f2da0a3d21818466265e34a78597
+JSMINIFY_IMAGE = tdewolff/minify@sha256:3a1b86635d8428bb287607c2ca8aab0b23237e4685e02a598397aea0f470b549
 
 ## env
 # You can set the following environment variables when calling make:
@@ -107,7 +109,8 @@ endif
 ui: prep
 #	pack the ui artifacts
 #
-	zip -r $(BINARIES)/ui.zip ui
+	$(call utils, minify_js drives.js files.js repo.js main.js)
+	zip -r $(BINARIES)/ui.zip ui -x 'ui/web/js/oqta/*'
 
 
 .PHONY: prep

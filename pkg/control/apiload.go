@@ -85,5 +85,6 @@ func (a *api) load(w http.ResponseWriter, req *http.Request) {
 	} else {
 		sendReply([]byte(
 			fmt.Sprintf("loaded data into drive %d", drive)), http.StatusOK, w)
+		a.forceNotify <- true
 	}
 }

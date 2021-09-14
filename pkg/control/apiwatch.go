@@ -65,9 +65,13 @@ func (a *api) watchDaemon() {
 		change := &Change{}
 
 		l := a.getCartridges()
-		if !cartridgeListsEqual(l, list) {
+		force := len(a.forceNotify) > 0
+		if force || !cartridgeListsEqual(l, list) {
 			change.Drives = l
 			list = l
+		}
+		if force {
+			<-a.forceNotify
 		}
 
 		c := a.daemon.GetClient()
