@@ -319,30 +319,6 @@ func (i *Index) batched(flush bool) error {
 }
 
 //
-func (i *Index) Search(term string, max int) ([]string, error) {
-
-	term = strings.TrimSpace(term)
-	if term == "" {
-		return nil, fmt.Errorf("no search term")
-	}
-
-	log.Debugf("searching for '%s'", term)
-	query := bleve.NewQueryStringQuery(term)
-	search := bleve.NewSearchRequestOptions(query, max, 0, false)
-	res, err := i.index.Search(search)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := make([]string, len(res.Hits))
-	for ix, h := range res.Hits {
-		ret[ix] = h.ID
-	}
-
-	return ret, nil
-}
-
-//
 func (i *Index) makeRelative(path string) string {
 	if len(path) > len(i.repo) && strings.HasPrefix(path, i.repo) {
 		return path[len(i.repo)+1:]

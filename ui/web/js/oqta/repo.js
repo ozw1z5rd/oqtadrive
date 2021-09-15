@@ -50,10 +50,10 @@ function search(term) {
 
     fetch('/search?items=25&term=' + encodeURIComponent(term), {
         headers: {
-            'Content-Type': 'text'
+            'Content-Type': 'application/json'
         }
     }).then(
-        response => response.text()
+        response => response.json()
     ).then(
         data => updateSearchResults(data)
     ).catch(
@@ -67,13 +67,17 @@ function updateSearchResults(data) {
     var list = document.getElementById('search-results');
     list.textContent = null;
 
-    data.split("\n").forEach(function(l) {
+    var li = document.createElement('li');
+    li.className = "list-group-item text-white bg-dark";
+    li.appendChild(document.createTextNode("total hits: " + data.total));
+    list.appendChild(li);
+
+    data.hits.forEach(function(l) {
         if (l == "") {
             return;
         }
-        var li = document.createElement('li');
+        li = document.createElement('li');
         li.className = "list-group-item text-white bg-dark";
-        li.align = "left";
         li.onclick = function() {
             searchItemSelected(this.innerHTML);
         }

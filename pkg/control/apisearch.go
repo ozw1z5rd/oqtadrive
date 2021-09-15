@@ -23,9 +23,10 @@ package control
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
-// FIXME: JSON return
+//
 func (a *api) search(w http.ResponseWriter, req *http.Request) {
 
 	if a.index == nil {
@@ -44,10 +45,15 @@ func (a *api) search(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	ret := ""
-	for _, r := range res {
-		ret += fmt.Sprintf("%s\n", r)
-	}
+	if wantsJSON(req) {
+		sendJSONReply(res, http.StatusOK, w)
 
-	sendReply([]byte(ret), http.StatusOK, w)
+	} else {
+		var sb strings.Builder
+		for _, r := range res.Hits {
+			sb.WriteString(fmt.Sprintf("%s\n", r))
+		}
+		sb.WriteString(fmt.Sprintf("\ntotal hits: %d\n", res.Total))
+		sendReply([]byte(sb.String()), http.StatusOK, w)
+	}
 }
