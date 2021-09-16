@@ -177,6 +177,8 @@ In addition to uploading a cartridge file to the daemon in order to load it into
 ### Web UI
 When the `ui` folder containing the web UI assets was deployed on the daemon host alongside the `oqtactl` binary, the daemon will serve the web UI on `http://{daemon host}:8888/` (port can be changed with `--address` option).
 
+**Note:** When using the `ui` folder from this *git* repo, and not from the release archive, make sure to run `make ui` before deploying. This will create all generated UI assets, such as minified JSON.
+
 ## Building
 On *Linux* you can use the `Makefile` to build `oqtactl`, the *OqtaDrive* binary. Note that for consistency, building is done inside a *Golang* build container, so you will need *Docker* to build, but no other dependencies. Just run `make build`. You can also cross-compile for *MacOS* and *Windows*. Run `CROSS=y make build` in that case. If you want to build on *MacOS* or *Windows* directly, you would have to install the *Golang* SDK there and run the proper `go build` command manually. 
 

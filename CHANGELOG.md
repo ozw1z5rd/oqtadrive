@@ -1,5 +1,20 @@
 # Change Log
 
+## 0.2.1
+
+##### *Dedicated to Sir Clive Sinclair (30 July 1940 &ndash; 16 September 2021)*
+
+This release does not require re-flashing the adapter. There were no changes to the firmware.
+
+### Overall
+- bug fixes
+- documentation updates
+- refactorings
+
+### Daemon / `oqtactl`
+- added *load by reference* capability, currently supports the `repo://` schema
+- search & load files from a cartridge repository, a.k.a [*repo* ](doc/repo.md)
+
 ## 0.2.0
 This release requires re-flashing the adapter. Protocol version remains at `3`.
 

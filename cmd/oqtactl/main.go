@@ -33,7 +33,7 @@ var OqtaDriveVersion string
 //
 func synopsis() {
 	fmt.Print(`
-synopsis: oqtactl {serve|load|unload|save|ls|dump|resync|config|version} ...
+synopsis: oqtactl {serve|load|unload|save|ls|dump|map|search|resync|config|version} ...
 
 run 'oqtactl {action} -h|--help' to see detailed info
 
@@ -42,7 +42,7 @@ run 'oqtactl {action} -h|--help' to see detailed info
 
 //
 func version() {
-	fmt.Printf("\nOqtaDrive %s\n\n", OqtaDriveVersion)
+	fmt.Printf("\nOqtaDrive %s\ndedicated to Sir Clive Sinclair (30 July 1940 - 16 September 2021)\n\n", OqtaDriveVersion)
 }
 
 //
