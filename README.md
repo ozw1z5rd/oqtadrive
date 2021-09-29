@@ -22,6 +22,7 @@ Due to the minimal hardware required, *OqtaDrive* is also very cost-efficient. I
 - Load & save from/to *MDR* and *MDV* formatted cartridge files
 - For *Spectrum*, *Z80* snapshot files can be directly loaded, no additional software required. Big thanks to Tom Dalby for open-sourcing [Z80onMDR Lite](https://github.com/TomDDG/Z80onMDR_lite)!
 - Store your cartridge collection on the daemon host and [search & load](doc/repo.md) from any client
+- Connect a *rumble motor* for authentic sound ;-)
 - List virtual drives & contents of cartridges
 - Hex dump cartridge contents for inspection
 - [Install script](doc/install.md) for *Linux*

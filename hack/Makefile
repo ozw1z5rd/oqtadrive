@@ -185,7 +185,7 @@ get_arduinocli: sanity
 	mkdir -p "$(ARDUINO_DIR)"
 	curl -fsSL \
 		https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh \
-			| PATH="$(PATH):$(ARDUINO_DIR)" BINDIR="$(ARDUINO_DIR)" sh
+			| PATH="$(PATH):$(ARDUINO_DIR)" BINDIR="$(ARDUINO_DIR)" sh -s 0.18.3
 	echo -e "\nconfiguring Arduino CLI"
 	"$(ARDUINO_CLI)" config init --overwrite
 	echo -e "\nupdating index"
