@@ -59,6 +59,9 @@ func (z *Z80) Read(in io.Reader, strict, repair bool,
 	}
 
 	cart.SetModified(false)
+	cart.SeekToStart()
+	cart.RewindAccessIx(true)
+
 	return cart, nil
 }
 

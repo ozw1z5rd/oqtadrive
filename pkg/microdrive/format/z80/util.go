@@ -25,10 +25,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/if1"
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/raw"
 )
 
 //
@@ -66,45 +62,5 @@ func adjust(target []byte, ix int, val int) error {
 		return fmt.Errorf("adjustment index out of range: %d", ix)
 	}
 	target[ix] = byte(int(target[ix]) + val)
-	return nil
-}
-
-//
-func padCartridge(cart base.Cartridge) error {
-
-	var b bytes.Buffer
-
-	for ix := cart.AccessIx(); ix > 0; {
-
-		ix = cart.AdvanceAccessIx(false)
-		b.Reset()
-
-		// sector header
-		raw.WriteSyncPattern(&b)
-		b.WriteByte(0x01)
-		b.WriteByte(byte(ix + 1))
-		b.WriteByte(0x00)
-		b.WriteByte(0x00)
-		b.WriteString(cart.Name())
-		b.WriteByte(0x00)
-
-		hd, _ := if1.NewHeader(b.Bytes(), false)
-		if err := hd.FixChecksum(); err != nil {
-			return err
-		}
-
-		// blank record
-		rec, _ := if1.NewRecord(make([]byte, if1.RecordLength), false)
-		if err := rec.FixChecksums(); err != nil {
-			return err
-		}
-
-		if sec, err := base.NewSector(hd, rec); err != nil {
-			return err
-		} else {
-			cart.SetSectorAt(ix, sec)
-		}
-	}
-
 	return nil
 }

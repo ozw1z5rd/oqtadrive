@@ -131,6 +131,9 @@ func (m *MDR) Read(in io.Reader, strict, repair bool,
 		RepairOrder(cart)
 	}
 
+	cart.SeekToStart()
+	cart.RewindAccessIx(true)
+
 	log.Debugf("%d sectors loaded", r)
 	cart.SetModified(false)
 

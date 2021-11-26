@@ -1,5 +1,18 @@
 # Change Log
 
+## 0.2.2
+
+This release does not require re-flashing the adapter. There were no changes to the firmware.
+
+### Overall
+- `REPO` setting added to installer
+- bug fixes
+- documentation updates
+- refactorings
+
+### Daemon / `oqtactl`
+- *Z80* snapshot conversion & loading optimizations - Compression of the various files created during conversion is now done in parallel when daemon is running on a multi-core system. Additionally, these files are now placed on the cartridge image in a way that greatly reduces loading time.
+
 ## 0.2.1
 
 ##### *Dedicated to Sir Clive Sinclair (30 July 1940 &ndash; 16 September 2021)*

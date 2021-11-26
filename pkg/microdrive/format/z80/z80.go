@@ -29,6 +29,9 @@ package z80
 import (
 	"fmt"
 	"io"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
 )
@@ -61,17 +64,25 @@ func (s *snapshot) setName(n string) {
 //
 func LoadZ80(in io.Reader, name string) (base.Cartridge, error) {
 
+	start := time.Now()
 	snap := &snapshot{}
 	if err := snap.unpack(in); err != nil {
 		return nil, fmt.Errorf("error unpacking Z80 snapshot: %v", err)
 	}
 
+	end := time.Now()
+	log.WithField("duration", end.Sub(start)).Debug("unpacked Z80 snapshot")
+
 	snap.setName(name)
 
+	start = end
 	if err := snap.pack(); err != nil {
 		return nil, fmt.Errorf(
 			"error storing Z80 snapshot into cartridge: %v", err)
 	}
+
+	end = time.Now()
+	log.WithField("duration", end.Sub(start)).Debug("packed cartridge")
 
 	return snap.cart, nil
 }

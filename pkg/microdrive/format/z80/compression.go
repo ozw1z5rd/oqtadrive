@@ -83,7 +83,7 @@ func decompressZ80(r *bufio.Reader, out []byte) error {
 }
 
 // zxsc modified lzf compressor
-func zxsc(fload, store []byte, fileSize int, screen bool) int {
+func zxsc(fload, store []byte, fileSize int, screen bool, logID string) int {
 
 	tStart := time.Now()
 
@@ -137,7 +137,9 @@ func zxsc(fload, store []byte, fileSize int, screen bool) int {
 			p++
 		}
 	}
-	log.Debugf("findmatch time: %v", time.Now().Sub(tMatch))
+
+	log.WithFields(log.Fields{
+		"duration": time.Now().Sub(tMatch), "file": logID}).Debug("findmatch")
 
 	// calculate cost to end for each byte, uses greedy parser, backwards
 	// version with re-use for massive speed-up
@@ -283,7 +285,8 @@ func zxsc(fload, store []byte, fileSize int, screen bool) int {
 		}
 	}
 
-	log.Debugf("compression time: %v", time.Now().Sub(tStart))
+	log.WithFields(log.Fields{
+		"duration": time.Now().Sub(tStart), "file": logID}).Debug("compression")
 
 	return storeL
 }

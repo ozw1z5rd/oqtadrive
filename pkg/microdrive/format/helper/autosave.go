@@ -112,6 +112,8 @@ func AutoSave(drive int, cart base.Cartridge) error {
 	}
 
 	cart.SetAutoSaved(true)
+	cart.SeekToStart()
+	cart.RewindAccessIx(true)
 
 	log.Debugf("auto-save took %v", time.Now().Sub(start))
 	return nil

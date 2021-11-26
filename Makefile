@@ -22,7 +22,7 @@
 SHELL = /bin/bash
 
 REPO = oqtadrive
-OQTADRIVE_RELEASE = 0.2.1
+OQTADRIVE_RELEASE = 0.2.2-wip
 OQTADRIVE_VERSION := $(shell git describe --always --tag --dirty)
 
 ROOT = $(shell pwd)
@@ -87,7 +87,7 @@ run:
 
 .PHONY: build
 build: prep ui
-#	build the binary
+#	build the binary and pack UI artifacts
 #
 	rm -f $(BINARIES)/oqtactl
 	$(call utils, build_binary oqtactl linux amd64 keep)
@@ -107,7 +107,7 @@ endif
 
 .PHONY: ui
 ui: prep
-#	pack the ui artifacts
+#	pack the UI artifacts
 #
 	$(call utils, minify_js drives.js files.js repo.js main.js)
 	zip -r $(BINARIES)/ui.zip ui -x 'ui/web/js/oqta/*'

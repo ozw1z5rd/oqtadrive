@@ -29,6 +29,7 @@ package z80
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -42,174 +43,266 @@ func (s *snapshot) pack() error {
 
 	s.cart = if1.NewCartridge()
 	s.cart.SetName(s.name)
+	var wg sync.WaitGroup
 
-	// write 'run' file
-	start := 23813
-	param := 0
-
-	length := len(s.code)
-
-	log.Debugf("run file: %d", length)
-	if err := s.addToCartridge(fmt.Sprintf("%-10s", "run"), s.code, length,
-		start, param, 0x00); err != nil {
-		return err
-	}
-
-	comp := make([]byte, 6912+216+109)
+	// run file
+	run := &part{fmt.Sprintf("%-10s", "run"),
+		s.code, len(s.code), 23813, 0, 0x00, nil}
+	log.Debugf("run file: %d", run.length)
 
 	// screen
-	length = zxsc(s.main, comp[len(scrLoad):], 6912, true)
-	length += copy(comp, scrLoad) // add m/c
+	scr := &part{}
+	wg.Add(1)
 
-	// write screen
-	start = 25088
-	param = 0xffff
-
-	log.Debugf("screen file: %d", length)
-	if err := s.addToCartridge(fmt.Sprintf("%-10s", "S"), comp, length, start,
-		param, 0x03); err != nil {
-		return err
-	}
+	go func() {
+		defer wg.Done()
+		scr.data = make([]byte, 6912+216+109)
+		scr.length = zxsc(s.main, scr.data[len(scrLoad):], 6912, true, "S")
+		scr.length += copy(scr.data, scrLoad) // add m/c
+		scr.file = fmt.Sprintf("%-10s", "S")
+		scr.start = 25088
+		scr.param = 0xffff
+		scr.dataType = 0x03
+		log.Debugf("screen file: %d", scr.length)
+	}()
 
 	// otek pages
+	var pg1 *part
+	var pg3 *part
+	var pg4 *part
+	var pg6 *part
+	var pg7 *part
+
 	if s.otek {
-		comp = make([]byte, 16384+512+len(unpack))
-		length = zxsc(s.main[s.bank[4]:], comp[len(unpack):], 16384, false)
-		copy(comp, unpack) // add in unpacker
 
-		nameCount := 1
+		lenData := 16384 + 512 + len(unpack)
 
-		length += len(unpack)
-		log.Debugf("page file 1: %d", length)
-		start = 32256 - len(unpack)
-		param = 0xffff
-		if err := s.addToCartridge(fmt.Sprintf("%-10d", nameCount), comp, length,
-			start, param, 0x03); err != nil {
-			return err
-		}
+		// page 1
+		pg1 = &part{}
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			pg1.data = make([]byte, lenData)
+			pg1.length = zxsc(
+				s.main[s.bank[4]:], pg1.data[len(unpack):], 16384, false, "1")
+			copy(pg1.data, unpack) // add in unpacker
+			pg1.length += len(unpack)
+			pg1.start = 32256 - len(unpack)
+			pg1.param = 0xffff
+			pg1.file = fmt.Sprintf("%-10d", 1)
+			pg1.dataType = 0x03
+			log.Debugf("page file 1: %d", pg1.length)
+		}()
 
 		// page 3
-		nameCount++
-		comp[0] = 0x13
-		length = zxsc(s.main[s.bank[6]:], comp[1:], 16384, false) + 1
-		log.Debugf("page file 3: %d", length)
-		start = 32255 // don't need to replace the unpacker, just the page number
-		if err := s.addToCartridge(fmt.Sprintf("%-10d", nameCount), comp, length,
-			start, param, 0x03); err != nil {
-			return err
-		}
+		pg3 = &part{}
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			pg3.data = make([]byte, lenData)
+			pg3.data[0] = 0x13
+			pg3.length = zxsc(s.main[s.bank[6]:], pg3.data[1:], 16384, false, "2") + 1
+			pg3.start = 32255 // don't need to replace the unpacker, just the page number
+			pg3.param = 0xffff
+			pg3.file = fmt.Sprintf("%-10d", 2)
+			pg3.dataType = 0x03
+			log.Debugf("page file 3: %d", pg3.length)
+		}()
 
 		// page 4
-		nameCount++
-		comp[0] = 0x14
-		length = zxsc(s.main[s.bank[7]:], comp[1:], 16384, false) + 1
-		log.Debugf("page file 4: %d", length)
-		if err := s.addToCartridge(fmt.Sprintf("%-10d", nameCount), comp, length,
-			start, param, 0x03); err != nil {
-			return err
-		}
+		pg4 = &part{}
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			pg4.data = make([]byte, lenData)
+			pg4.data[0] = 0x14
+			pg4.length = zxsc(s.main[s.bank[7]:], pg4.data[1:], 16384, false, "3") + 1
+			pg4.file = fmt.Sprintf("%-10d", 3)
+			pg4.start = 32255
+			pg4.param = 0xffff
+			pg4.dataType = 0x03
+			log.Debugf("page file 4: %d", pg4.length)
+		}()
 
 		// page 6
-		nameCount++
-		comp[0] = 0x16
-		length = zxsc(s.main[s.bank[9]:], comp[1:], 16384, false) + 1
-		log.Debugf("page file 6: %d", length)
-		if err := s.addToCartridge(fmt.Sprintf("%-10d", nameCount), comp, length,
-			start, param, 0x03); err != nil {
-			return err
-		}
+		pg6 = &part{}
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			pg6.data = make([]byte, lenData)
+			pg6.data[0] = 0x16
+			pg6.length = zxsc(s.main[s.bank[9]:], pg6.data[1:], 16384, false, "4") + 1
+			pg6.file = fmt.Sprintf("%-10d", 4)
+			pg6.start = 32255
+			pg6.param = 0xffff
+			pg6.dataType = 0x03
+			log.Debugf("page file 6: %d", pg6.length)
+		}()
 
 		// page 7
-		nameCount++
-		comp[0] = 0x17
-		length = zxsc(s.main[s.bank[10]:], comp[1:], 16384, false) + 1
-		log.Debugf("page file 7: %d", length)
-		if err := s.addToCartridge(fmt.Sprintf("%-10d", nameCount), comp, length,
-			start, param, 0x03); err != nil {
+		pg7 = &part{}
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			pg7.data = make([]byte, lenData)
+			pg7.data[0] = 0x17
+			pg7.length = zxsc(s.main[s.bank[10]:], pg7.data[1:], 16384, false, "5") + 1
+			pg7.file = fmt.Sprintf("%-10d", 5)
+			pg7.start = 32255
+			pg7.param = 0xffff
+			pg7.dataType = 0x03
+			log.Debugf("page file 7: %d", pg7.length)
+		}()
+	}
+
+	// main + launcher (handled together, i.e. just one work item)
+	main := &part{}
+	launch := &part{}
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		main.data = make([]byte, 42240+1320)
+		delta := 3
+
+		for {
+			//delta++
+			// up to the full size - delta
+			main.length = zxsc(s.main[6912:], main.data, 42240-delta, false, "M")
+			i := decompressf(main.data, main.length)
+			delta += i
+			if delta > BGap {
+				main.err = fmt.Errorf(
+					"cannot compress main block, delta too large: %d > %d",
+					delta, BGap)
+				return
+			}
+			if i < 1 {
+				break
+			}
+		}
+
+		maxSize := 40704 // 0x6100 lowest point
+		if main.length > maxSize-delta {
+			// too big to fit in Spectrum memory
+			main.err = fmt.Errorf(
+				"cannot compress main block, max size exceeded: %d > %d",
+				main.length, maxSize-delta)
+			return
+		}
+
+		main.start = 65536 - main.length
+		main.param = 0xffff
+		main.file = fmt.Sprintf("%-10s", "M")
+		main.dataType = 0x03
+		log.Debugf("main file: %d (delta: %d)", main.length, delta)
+
+		//launcher
+		launch.length = 65536 - main.length // start of compression
+		s.launcher[ixLCS] = byte(delta)     //adjust last copy for delta
+		s.launcher[ixCP] = byte(launch.length)
+		s.launcher[ixCP+1] = byte(launch.length >> 8)
+		for i := 0; i < delta; i++ {
+			//copy end delta*bytes to launcher
+			s.launcher[launchMDRFullLen+i] = s.main[49152-delta+i]
+		}
+
+		launch.length = launchMDRFullLen + delta
+		launch.start = 16384
+		launch.file = fmt.Sprintf("%-10s", "L")
+		launch.data = s.launcher
+		launch.param = 0xffff
+		launch.dataType = 0x03
+		log.Debugf("launcher file: %d", launch.length)
+	}()
+
+	wg.Wait()
+
+	parts := []*part{run, scr, pg1, pg3, pg4, pg6, pg7, main, launch}
+
+	// position access index at top most sector
+	s.cart.SeekToStart()
+	s.cart.AdvanceAccessIx(false)
+
+	for _, p := range parts {
+		if err := addToCartridge(s.cart, p); err != nil {
 			return err
 		}
 	}
 
-	// main
-	comp = make([]byte, 42240+1320)
-	delta := 3
-
-	for {
-		//delta++
-		// up to the full size - delta
-		length = zxsc(s.main[6912:], comp, 42240-delta, false)
-		i := decompressf(comp, length)
-		delta += i
-		if delta > BGap {
-			return fmt.Errorf(
-				"cannot compress main block, delta too large: %d > %d",
-				delta, BGap)
-		}
-		if i < 1 {
-			break
-		}
-	}
-
-	maxSize := 40704 // 0x6100 lowest point
-	if length > maxSize-delta {
-		// too big to fit in Spectrum memory
-		return fmt.Errorf(
-			"cannot compress main block, max size exceeded: %d > %d",
-			length, maxSize-delta)
-	}
-
-	// write main
-	start = 65536 - length
-	param = 0xffff
-	log.Debugf("main file: %d (delta: %d)", length, delta)
-	if err := s.addToCartridge(fmt.Sprintf("%-10s", "M"), comp, length, start,
-		param, 0x03); err != nil {
-		return err
-	}
-
-	//launcher
-	length = 65536 - length         // start of compression
-	s.launcher[ixLCS] = byte(delta) //adjust last copy for delta
-	s.launcher[ixCP] = byte(length)
-	s.launcher[ixCP+1] = byte(length >> 8)
-	for i := 0; i < delta; i++ {
-		//copy end delta*bytes to launcher
-		s.launcher[launchMDRFullLen+i] = s.main[49152-delta+i]
-	}
-
-	// write launcher
-	length = launchMDRFullLen + delta
-	log.Debugf("launcher file: %d", length)
-	start = 16384
-	if err := s.addToCartridge(fmt.Sprintf("%-10s", "L"), s.launcher, length,
-		start, param, 0x03); err != nil {
-		return err
-	}
-
-	if err := padCartridge(s.cart); err != nil {
+	if err := fillBlanks(s.cart); err != nil {
 		return err
 	}
 
 	return nil
 }
 
+// TODO: currently not used, maybe remove?
+func interleave(parts []*part) []*part {
+
+	count := 0
+	for _, p := range parts {
+		if p != nil {
+			count++
+		}
+	}
+
+	ret := make([]*part, count)
+	ix := 0
+
+	for _, p := range parts {
+		if p != nil {
+			ret[ix] = p
+			ix += 2
+			if ix >= len(ret) {
+				ix = 1
+			}
+		}
+	}
+
+	return ret
+}
+
+//
+type part struct {
+	file     string
+	data     []byte
+	length   int
+	start    int
+	param    int
+	dataType byte
+	err      error
+}
+
 // add data to the virtual cartridge
-func (s *snapshot) addToCartridge(file string, data []byte,
-	length, start, param int, dataType byte) error {
+func addToCartridge(cart base.Cartridge, p *part) error {
+
+	if p == nil {
+		return nil
+	}
+
+	if p.err != nil {
+		return p.err
+	}
 
 	log.WithFields(log.Fields{
-		"file":   file,
-		"length": length,
-		"start":  start,
-		"param":  param,
-		"type":   dataType,
+		"file":   p.file,
+		"length": p.length,
+		"start":  p.start,
+		"param":  p.param,
+		"type":   p.dataType,
 	}).Debug("adding to cartridge")
 
 	var dataPos int
 	var sPos int
 
 	// work out how many sectors needed
-	numSec := ((length + 9) / 512) + 1 // +9 for initial header
+	numSec := ((p.length + 9) / 512) + 1 // +9 for initial header
 
 	for sequence := 0; sequence < numSec; sequence++ {
 
@@ -218,11 +311,11 @@ func (s *snapshot) addToCartridge(file string, data []byte,
 		// sector header
 		raw.WriteSyncPattern(&b)
 		b.WriteByte(0x01)
-		secIx := s.cart.AdvanceAccessIx(false)
+		secIx := cart.AccessIx()
 		b.WriteByte(byte(secIx + 1))
 		b.WriteByte(0x00)
 		b.WriteByte(0x00)
-		b.WriteString(s.cart.Name())
+		b.WriteString(cart.Name())
 		b.WriteByte(0x00)
 
 		hd, _ := if1.NewHeader(b.Bytes(), false)
@@ -246,16 +339,16 @@ func (s *snapshot) addToCartridge(file string, data []byte,
 		b.WriteByte(byte(sequence))
 
 		num := 0
-		if length > 512 { // if length >512 then this is 512 until final part
+		if p.length > 512 { // if length >512 then this is 512 until final part
 			num = 512
 		} else if numSec > 1 {
-			num = length
+			num = p.length
 		} else {
-			num = length + 9 // add 9 for header info
+			num = p.length + 9 // add 9 for header info
 		}
 		writeUInt16(&b, num)
 
-		b.WriteString(file)
+		b.WriteString(p.file)
 		b.WriteByte(0x00)
 
 		// data - 512 bytes of data
@@ -271,13 +364,13 @@ func (s *snapshot) addToCartridge(file string, data []byte,
 		//  (8,9) 0x00 0x00 - line number if LINE used
 		//
 		if sequence == 0 {
-			b.WriteByte(dataType)
-			writeUInt16(&b, length)
-			writeUInt16(&b, start)
+			b.WriteByte(p.dataType)
+			writeUInt16(&b, p.length)
+			writeUInt16(&b, p.start)
 
-			if dataType == 0x00 { // basic
-				writeUInt16(&b, length)
-				writeUInt16(&b, param)
+			if p.dataType == 0x00 { // basic
+				writeUInt16(&b, p.length)
+				writeUInt16(&b, p.param)
 			} else {
 				b.WriteByte(0xff)
 				b.WriteByte(0xff)
@@ -291,7 +384,7 @@ func (s *snapshot) addToCartridge(file string, data []byte,
 			sPos = 27 // to cover the headers
 		}
 
-		j := length // copy code
+		j := p.length // copy code
 
 		if j > 512 {
 			j = 512
@@ -301,7 +394,7 @@ func (s *snapshot) addToCartridge(file string, data []byte,
 		}
 
 		for i := 0; i < j; i++ {
-			b.WriteByte(data[dataPos])
+			b.WriteByte(p.data[dataPos])
 			dataPos++
 			sPos++
 		}
@@ -311,9 +404,9 @@ func (s *snapshot) addToCartridge(file string, data []byte,
 		}
 
 		if sequence == 0 {
-			length -= 503
+			p.length -= 503
 		} else {
-			length -= 512
+			p.length -= 512
 		}
 
 		rec, _ := if1.NewRecord(b.Bytes(), false)
@@ -324,8 +417,86 @@ func (s *snapshot) addToCartridge(file string, data []byte,
 		if sec, err := base.NewSector(hd, rec); err != nil {
 			return err
 		} else {
-			s.cart.SetSectorAt(secIx, sec)
+			cart.SetSectorAt(secIx, sec)
+			if err := advanceWithInterleave(cart); err != nil {
+				return err
+			}
 		}
+	}
+
+	// additional sector gap after each file
+	if err := advanceWithInterleave(cart); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//
+func advanceWithInterleave(cart base.Cartridge) error {
+
+	cart.AdvanceAccessIx(false)
+	ix := cart.AdvanceAccessIx(false) // sector interleave
+
+	if cart.GetSectorAt(ix) != nil {
+		// When seeing a non-nil sector, we've made one round through the
+		// cartridge and there's an even number of sectors, i.e. we've hit the
+		// first sector we added. In this case, advance access index by one.
+		// For an odd number of sectors, we will be aligned with the nil sectors
+		// automatically in the second round.
+		ix = cart.AdvanceAccessIx(false)
+		if cart.GetSectorAt(ix) != nil {
+			// if still non-nil, cartridge is full
+			return fmt.Errorf("cartridge full")
+		}
+	}
+
+	return nil
+}
+
+//
+func fillBlanks(cart base.Cartridge) error {
+
+	for ix := 0; ix < cart.SectorCount(); ix++ {
+		if cart.GetSectorAt(ix) == nil {
+			if err := addBlankSectorAt(cart, ix); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+//
+func addBlankSectorAt(cart base.Cartridge, ix int) error {
+
+	var b bytes.Buffer
+
+	// sector header
+	raw.WriteSyncPattern(&b)
+	b.WriteByte(0x01)
+	b.WriteByte(byte(ix + 1))
+	b.WriteByte(0x00)
+	b.WriteByte(0x00)
+	b.WriteString(cart.Name())
+	b.WriteByte(0x00)
+
+	hd, _ := if1.NewHeader(b.Bytes(), false)
+	if err := hd.FixChecksum(); err != nil {
+		return err
+	}
+
+	// blank record
+	rec, _ := if1.NewRecord(make([]byte, if1.RecordLength), false)
+	if err := rec.FixChecksums(); err != nil {
+		return err
+	}
+
+	if sec, err := base.NewSector(hd, rec); err != nil {
+		return err
+	} else {
+		cart.SetSectorAt(ix, sec)
 	}
 
 	return nil
