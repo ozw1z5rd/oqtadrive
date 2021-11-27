@@ -135,9 +135,10 @@ function build_binary {
         -v "${ROOT}/${BINARIES}:/go/bin" ${CACHE_VOLS} \
         -v "${ROOT}:/go/src/${REPO}" -w "/go/src/${REPO}" \
         -e CGO_ENABLED=0 -e GOOS="$2" -e GOARCH="${arch}" ${extra_env} \
-        "${GO_IMAGE}" go build -v -tags netgo -installsuffix netgo \
-        -ldflags "-w -X main.OqtaDriveVersion=${OQTADRIVE_VERSION}" \
-        -o "${binary}" "./cmd/$1/"
+        "${GO_IMAGE}" bash -c \
+            "go mod tidy && go build -v -tags netgo -installsuffix netgo \
+            -ldflags \"-w -X main.OqtaDriveVersion=${OQTADRIVE_VERSION}\" \
+            -o \"${binary}\" \"./cmd/$1/\""
 
     local specifier="_${OQTADRIVE_RELEASE}_$2_${arch}"
     zip -j "../${binary}${specifier}.zip" "../${binary}"
