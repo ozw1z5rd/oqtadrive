@@ -301,8 +301,16 @@ function manage_service {
         case "${a}" in
 
             install)
+                local extra_args
+                if [[ -n "${REPO}" ]]; then
+                    mkdir -p "${REPO}" || {
+                        echo -e "\nCannot create repo folder '${REPO}'\n" >&2
+                        return 1
+                    }
+                    extra_args+=" -r ${REPO}"
+                fi
                 curl -fsSL "${BASE_URL}/${BRANCH}/hack/oqtadrive.service" \
-                    | sed -E -e "s;^ExecStart=.*$;ExecStart=${OQTACTL} serve -d ${PORT};g" \
+                    | sed -E -e "s;^ExecStart=.*$;ExecStart=${OQTACTL} serve -d ${PORT} ${extra_args};g" \
                           -e "s;^WorkingDirectory=.*$;WorkingDirectory=${ROOT};g" \
                           -e "s;^User=.*$;User=${USER};g" \
                     | sudo tee /etc/systemd/system/oqtadrive.service > /dev/null

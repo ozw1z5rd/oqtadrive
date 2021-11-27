@@ -51,7 +51,7 @@ ROOT = $(shell pwd)
 ## env
 # You can set the following environment variables when calling ${DIM}make${NRM}:
 #
-#	${ITL}VERSION${NRM}		${ITL}OqtaDrive${NRM} version to use; defaults to latest release
+#	${ITL}VERSION${NRM}		${ITL}OqtaDrive${NRM} version to install; defaults to latest release
 #
 #	${ITL}PORT${NRM}		serial port device to use when uploading; defaults to
 #			${DIM}/dev/ttyUSB0${NRM}
@@ -64,11 +64,14 @@ ROOT = $(shell pwd)
 #
 #	${ITL}SKIP_UI=y${NRM}	set this to skip installing the web UI
 #
+#	${ITL}REPO${NRM}		set to repo folder during install to activate repo
+#
 #	${ITL}FQBN${NRM}		board identifier to use when uploading; defaults to
 #			${DIM}arduino:avr:nano${NRM}
 #
 #	${ITL}BUILD_URL${NRM}	set base URL of an alternative download site to not
-#			download from ${ITL}GitHub${NRM}, e.g. for using development builds
+#			download from ${ITL}GitHub${NRM} during install, e.g. for using
+#			development builds
 #
 #	${ITL}VERBOSE=y${NRM}	get detailed output
 #
@@ -94,6 +97,7 @@ VERSION ?=
 PORT ?= /dev/ttyUSB0
 RESET_PIN ?= 18
 SKIP_UI ?= n
+REPO ?=
 
 OQTACTL := $(ROOT)/oqtactl
 SKETCH_DIR := $(ROOT)/oqtadrive
