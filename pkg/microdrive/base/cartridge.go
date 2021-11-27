@@ -148,7 +148,10 @@ func (c *cartridge) GetPreviousSector() Sector {
 //
 func (c *cartridge) GetSectorAt(ix int) Sector {
 	if 0 <= ix && ix < len(c.sectors) {
+		log.Tracef("getting sector at index %d", ix)
 		return c.sectors[ix]
+	} else {
+		log.Tracef("getting sector at invalid index %d", ix)
 	}
 	return nil
 }

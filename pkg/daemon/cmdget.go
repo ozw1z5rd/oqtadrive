@@ -36,6 +36,7 @@ func (c *command) get(d *Daemon) error {
 
 	if cart := d.getCartridge(drive); cart != nil {
 
+		log.Trace("GET next sector")
 		sec := cart.GetNextSector()
 		if err := d.mru.setSector(sec); err != nil {
 			return err
