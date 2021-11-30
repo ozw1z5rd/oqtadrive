@@ -12,7 +12,7 @@ This guide shows you how to set up *OqtaDrive* using the installation `Makefile`
 
 - Create file `ssh` in the `boot` partition on the SD card. This file enables login via *ssh*, and can be empty ([details](https://www.raspberrypi.org/documentation/remote-access/ssh/)).
 
-- For letting the *Pi* access your wireless network, create file `wpa-supplicant.conf`, also in the `boot` partition. The contents of this file [is documented here](https://www.raspberrypi.org/documentation/configuration/wireless/headless.md).
+- For letting the *Pi* access your wireless network, create file `wpa_supplicant.conf`, also in the `boot` partition. The contents of this file [is documented here](https://www.raspberrypi.com/documentation/computers/configuration.html#setting-up-a-headless-raspberry-pi).
 
 - Place the SD card in the *Pi* and boot it up. Check your wireless router to find out which IP address it received, and log in via ssh, e.g. `ssh pi@192.168.1.12`.
 
@@ -92,3 +92,5 @@ The installer `Makefile` has a few more targets you can invoke, and environment 
 - Fix the IP address of the *Pi* in your router, so you don't have to look it up each time you want to `ssh` into it.
 - For password-less login, you can also place your public *ssh* key in `/home/pi/.ssh/authorized_keys`.
 - You can add the environment variables you want to set such as `PORT` to the `.bashrc` of the `pi` user, so they're already set up when you `ssh` into the *Pi*.
+- If you've done a complete setup on a *Pi Zero W*, and you want to switch to a *Pi Zero 2 W*, you can essentially just take the micro SD card and plug it into the new board. There's one catch however: The *Zero 2 W* uses a different Wifi module, so Wifi setup gets repeated first time you boot it from the card. Only, the `wpa_supplicant.conf` file you placed in the `boot` partition during the initial setup is no longer there, because it got removed after the *Pi* completed Wifi setup. So before plugging the card into the new board, recreate `wpa_supplicant.conf` in the `boot` partition.
+ 

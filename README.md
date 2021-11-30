@@ -3,7 +3,7 @@
 #### *Sinclair Microdrive* emulator for *Spectrum* & *QL*
 
 ## TL;DR
-*OqtaDrive* emulates a bank of up to 8 *Microdrives* for use with a *Sinclair Spectrum* (with *Interface 1*) or *QL* machine. The goal is to functionally create a *faithful* reproduction of the original. That is, on the *Spectrum*/*QL* side, operating the emulated *Microdrives* should feel exactly the same as using the real thing.
+*OqtaDrive* emulates a bank of up to 8 *Microdrives* for use with a *Sinclair Spectrum* (with *Interface 1*) or *QL* machine. The goal is to functionally create a *faithful reproduction of the original*. That is, on the *Spectrum*/*QL* side, operating the emulated *Microdrives* should feel exactly the same as using the real thing. So by definition, it does not try to compete with more "modern day" mass storage solutions for *Spectrum* and *QL*.
 
 *OqtaDrive* is built around an *Arduino Nano* that connects via its GPIO ports to the *Microdrive* interface and via serial connection to a daemon running on a host machine. This daemon host could be anything, ranging from your PC to a small embedded board such as a *RaspberryPi Zero*, as long as it can run a supported OS (*Linux*, *MacOS*, *Windows*). The same *Nano* can be used with both *Spectrum* and *QL*, without any reconfiguration.
 
