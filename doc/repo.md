@@ -6,7 +6,11 @@ You can store your collection of cartridges and `Z80` snapshots in a so-called *
 
 1. Choose or create a root folder for the repo. Anywhere is fine as long as the user under which you run the daemon has access to this location.
 
+    - I **strongly advise against using a *FAT* file system** for the location of the repo! It may negatively impact the functioning of the search index (see below).
+
 2. Copy your files into the folder. Any supported input format is fine. You can freely organize your files in sub-folders.
+
+    - To transfer files from a remote machine, have a look at `scp` and/or `rsync`.
 
 3. When starting the daemon with `oqtactl serve`, point it to the repo folder with the `--repo` or `-r` option, to make it aware of the repo. If you're running the daemon as a `systemd` service, you need to edit the unit file accordingly, and restart the service.
 
