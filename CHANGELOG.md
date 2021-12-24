@@ -7,6 +7,7 @@ This release does not require re-flashing the adapter. There were no changes to 
 ### Overall
 - `REPO` setting added to installer
 - bug fixes
+- help popovers in web UI
 - documentation updates
 - refactorings
 
