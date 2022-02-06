@@ -343,6 +343,14 @@ func (d *Daemon) GetHardwareDrives() (int, int, bool) {
 	return -1, -1, false
 }
 
+// FIXME: not atomic
+func (d *Daemon) IsHardwareDrive(ix int) bool {
+	if d.synced && ix > 0 {
+		return d.conduit.hwGroupStart <= ix && ix <= d.conduit.hwGroupEnd
+	}
+	return false
+}
+
 //
 func (d *Daemon) MapHardwareDrives(start, end int) error {
 

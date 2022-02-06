@@ -112,6 +112,8 @@ type Sector interface {
 
 	Header() Header
 
+	SetHeader(h Header)
+
 	Record() Record
 
 	SetRecord(r Record)

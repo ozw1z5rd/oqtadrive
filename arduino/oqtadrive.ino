@@ -35,7 +35,7 @@
 //
 //#include "config/dongle.h"
 //#include "config/spectrum.h"
-//#include "config/if1.h"
+#include "config/if1.h"
 //#include "config/ql.h"
 //#include "config/pi.h"
 
@@ -206,6 +206,7 @@ bool IF1 = true;
 // --- state flags ------------------------------------------------------------
 volatile bool spinning    = false;
 volatile bool recording   = false;
+volatile bool shadowing   = false;
 volatile bool message     = false;
 volatile bool headerGap   = false;
 volatile bool calibration = false; // use the define setting at top to turn on!
@@ -220,6 +221,7 @@ const char CMD_PING    = 'P';
 const char CMD_STATUS  = 's';
 const char CMD_GET     = 'g';
 const char CMD_PUT     = 'p';
+const char CMD_CANCEL  = 'x';
 const char CMD_VERIFY  = 'y';
 const char CMD_MAP     = 'm';
 const char CMD_DEBUG   = 'd';
@@ -318,7 +320,9 @@ void loop() {
 
 	if (spinning) {
 
-		if (recording) {
+		if (shadowing) {
+			shadow();
+		} else if (recording) {
 			record();
 		} else {
 			replay();
@@ -446,8 +450,10 @@ bool checkReplayOrStop() {
 
 	uint8_t state = PIND;
 
-	// turn recording off, but never on here
-	recording = recording && ((state & MASK_RECORDING) != MASK_RECORDING);
+	// turn recording off, but never on here; when shadowing, replay must never
+	// be turned on!
+	recording = shadowing
+		|| (recording && ((state & MASK_RECORDING) != MASK_RECORDING));
 
 	if (!recording) {
 		setTracksToReplay();
@@ -510,7 +516,7 @@ void activateSignals() {
 
 	// This must not be set to INPUT_PULLUP. If there is a Microdrive upstream
 	// of the adapter in the daisy chain, the pull-up resistor would feed into
-	// that drive's COMMS_CLK output and confuse it.
+	// that drive's COMMS output and confuse it.
 	pinMode(PIN_COMMS_IN, INPUT);
 }
 
@@ -541,19 +547,30 @@ void driveOff() {
 	ledRead(IDLE);
 	spinning = false;
 	recording = false;
+	shadowing = false;
 	headerGap = false;
 	rumble(false);
 }
 
 //
 void driveOn() {
+
 	activateSignals();
-	setTracksToReplay();
+
+	if (shadowing) {
+		setTracksToRecord();
+		recording = true;
+	} else {
+		setTracksToReplay();
+		recording = false;
+		rumble(true);
+	}
+
 	headerGap = false;
+	// FIXME: does this need to be done differently when shadowing?
 	driveState = DRIVE_STATE_UNKNOWN;
-	recording = false;
+	//
 	spinning = true;
-	rumble(true);
 }
 
 // Active level of COMMS_CLK is LOW for Interface 1, HIGH for QL.
@@ -655,10 +672,13 @@ void selectDrive() {
 		commsClkCount = 0;
 	}
 
-	// avoid turning on a virtual drive when a h/w drive has been selected
-	if (activeDrive <= driveOffset
-		|| (hwGroupStart <= activeDrive && activeDrive <= hwGroupEnd)) {
+	if (activeDrive <= driveOffset) {
+		// avoid turning on a virtual drive when a drive further up
+		// the chain gets selected
 		activeDrive = 0;
+	} else {
+		// turn on shadowing when a h/w drive has been selected
+		shadowing = hwGroupStart <= activeDrive && activeDrive <= hwGroupEnd;
 	}
 
 	activeDrive == 0 ? driveOff() : driveOn();
@@ -716,7 +736,7 @@ void record() {
 
 	do {
 		daemonPendingCmd(CMD_PUT, activeDrive, 0);
-		uint16_t read = receiveBlock();
+		uint16_t read = receiveBlock(true, 1024);
 		blocks++;
 
 		if (blocks % 4 == 0) {
@@ -750,6 +770,89 @@ void record() {
 	checkReplayOrStop();
 }
 
+// FIXME: check for sync loss while here?
+void shadow() {
+
+	uint16_t headLen = headerLengthMux + 1;
+	uint8_t headH = highByte(headLen) + 1;
+	uint8_t headL = lowByte(headLen);
+
+	uint16_t recLen = recordLengthMux + 1;
+	uint8_t recH = highByte(recLen) + 1;
+	uint8_t recL = lowByte(recLen);
+
+	while (spinning) {
+
+		checkReplayOrStop();
+
+		if (!(findGap(20) && shadowBlock(headH, headL, headLen - 1))) {
+			continue;
+		}
+
+		if (!findGap(4)) {
+			// record not found
+			daemonCmdArgs(CMD_CANCEL, activeDrive, 1, 0, 0);
+			continue;
+		}
+
+		shadowBlock(recH, recL, recLen - 1);
+	}
+}
+
+//
+bool shadowBlock(uint8_t bHigh, uint8_t bLow, uint16_t toSend) {
+
+	daemonCmdArgs(CMD_PUT, activeDrive, bHigh, bLow, 0);
+
+	uint16_t read = receiveBlock(false, toSend);
+
+	if (read == toSend) {
+		UDR0 = 0; // acknowledge block
+		return true;
+	}
+
+	if (read < toSend) {
+		Serial.write(buffer, toSend - read); // pad block
+		Serial.flush();
+		UDR0 = toSend - read < 16 ? 0 : 1; // block too short
+
+	} else {
+		UDR0 = read - toSend > 16 ? 0 : 2; // block too long, with some tolerance
+	}
+
+	return false;
+}
+
+// FIXME: check for sync loss while here?
+bool findGap(uint8_t gap) {
+
+	register uint8_t now, prev = PINC & MASK_BOTH_TRACKS, elapsed = 0;
+
+	for (register uint8_t n = 0; n < 300; n++) { // max. wait 30 ms
+
+		_delay_us(100.0);
+
+		now = PINC & MASK_BOTH_TRACKS;
+		if (now == prev) {
+			if (++elapsed > gap) {
+				return true;
+			}
+		} else {
+			prev = now;
+			elapsed = 0;
+		}
+
+		if (n % 10 == 0) { // check for stop every 1 ms
+			checkReplayOrStop();
+			if (!spinning) {
+				break;
+			}
+		}
+	}
+
+	return false;
+}
+
 /*
 	Receive a block (header or record). Change in drive state is checked only
 	while waiting for the start of the block. Once the block starts, no further
@@ -774,7 +877,7 @@ void record() {
 	returned. The receiving side takes care of demuxing the data, additionally
 	considering that the tracks are shifted by 4 bits relative to one another.
  */
-uint16_t receiveBlock() {
+uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 
 	noInterrupts();
 
@@ -789,7 +892,9 @@ uint16_t receiveBlock() {
 		// but don't wait forever, and bail out when activity on COMMS_CLK
 		// indicates impending change of drive state
 		if (checkReplayOrStop() || ww == 1) {
-			UDR0 = ww == 1 ? 2 : 1; // cancel pending PUT command
+			if (variable) {
+				UDR0 = ww == 1 ? 2 : 1; // cancel pending PUT command
+			}
 			interrupts();
 			return 0;
 		}
@@ -804,7 +909,9 @@ uint16_t receiveBlock() {
 		for (w = 0xff; (((PINC & MASK_BOTH_TRACKS) ^ start) == 0) && w > 0; w--);
 
 		if (w == 0) { // could not sync
-			UDR0 = 3; // cancel pending PUT command
+			if (variable) {
+				UDR0 = 3; // cancel pending PUT command
+			}
 			interrupts();
 			return 0;
 		}
@@ -827,7 +934,9 @@ uint16_t receiveBlock() {
 		start = end;
 	}
 
-	UDR0 = 0; // complete pending PUT command to go ahead
+	if (variable) {
+		UDR0 = 0; // complete pending PUT command to go ahead
+	}
 
 	while (true) {
 
@@ -854,7 +963,9 @@ uint16_t receiveBlock() {
 			start = end;                               // prepare for next cycle
 		}
 
-		UDR0 = d; // send over serial
+		if (read < maxSend) {
+			UDR0 = d; // send over serial
+		}
 		read++;
 	}
 }

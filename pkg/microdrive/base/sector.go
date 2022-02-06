@@ -30,10 +30,7 @@ func NewSector(h Header, r Record) (Sector, error) {
 		header: h,
 		record: r,
 	}
-	if err := ret.validate(); err != nil {
-		return nil, err
-	}
-	return ret, nil
+	return ret, ret.validate()
 }
 
 //
@@ -68,6 +65,11 @@ func (s *sector) Header() Header {
 //
 func (s *sector) Record() Record {
 	return s.record
+}
+
+//
+func (s *sector) SetHeader(h Header) {
+	s.header = h
 }
 
 //

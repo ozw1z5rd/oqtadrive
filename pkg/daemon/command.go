@@ -34,6 +34,7 @@ const CmdPing = 'P'      // ping/pong (send/receive to/from IF1/QL)
 const CmdStatus = 's'    // get drive state (send to IF1/QL)
 const CmdGet = 'g'       // get sector (send to IF1/QL)
 const CmdPut = 'p'       // put sector (receive from IF1/QL)
+const CmdCancel = 'x'    // cancel in-progress put (receive from IF1/QL)
 const CmdVerify = 'y'    // verify sector bytes sent for previous get
 const CmdTimeStart = 't' // start stop watch
 const CmdTimeEnd = 'q'   // stop stop watch
@@ -90,6 +91,9 @@ func (c *command) dispatch(d *Daemon) error {
 
 	case CmdPut:
 		return c.put(d)
+
+	case CmdCancel:
+		return c.cancel(d)
 
 	case CmdDebug:
 		return c.debug(d)
