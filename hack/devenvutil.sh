@@ -371,7 +371,7 @@ function patch_avrdude {
 
     cat <<EOF > "${avrdude}"
 #!/bin/sh
-sudo strace -o "|${autoreset}" -eioctl "${dir}/avrdude.org" \$@
+sudo strace -o "|${autoreset}" -eioctl "${dir}/avrdude.org" \$@ 2>&1 | grep -vi "broken pipe"
 EOF
     chmod +x "${avrdude}"
 }

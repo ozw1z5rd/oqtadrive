@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #
 # This was retrieved from here:
@@ -21,6 +21,7 @@ start = time.time()
 pin = 18
 
 def reset():
+  print("autoreset: resetting using GPIO Pin " + str(pin))
   GPIO.setup(pin, GPIO.OUT)
   GPIO.output(pin, GPIO.HIGH)
   time.sleep(0.32)
@@ -37,15 +38,17 @@ def process():
         reset()
         return
       elif duration > 5000:
+        print("autoreset: timeout")
         return
     except Exception as e:
       if hasattr(e, 'errno'):
-	if e.errno != 11: # Ignore resource unavailable
-         raise
+        if e.errno != 11: # Ignore resource unavailable
+          raise
       else:
         raise
 
+print("\nautoreset: starting")
 process()
-print "avrdude-original: Using autoreset DTR on GPIO Pin " +str(pin)
 GPIO.cleanup()
+print("autoreset: done")
 exit
