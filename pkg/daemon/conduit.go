@@ -303,7 +303,7 @@ func (c *conduit) readStopMarker(s []byte) error {
 
 //
 func (c *conduit) fillPreamble(raw []byte) int {
-	if len(raw) < 12 {
+	if len(raw) < 12 { // FIXME: make constant
 		return 0
 	}
 	for ix := 0; ix < 10; ix++ {

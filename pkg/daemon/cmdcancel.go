@@ -39,7 +39,16 @@ func (c *command) cancel(d *Daemon) error {
 		return err
 	}
 
-	log.WithFields(log.Fields{"drive": drive, "code": c.arg(1)}).Debug("CANCEL")
+	ix := -1
+	if d.mru.header != nil {
+		ix = d.mru.header.Index()
+	}
+
+	log.WithFields(log.Fields{
+		"drive":  drive,
+		"code":   c.arg(1),
+		"sector": ix}).Debug("CANCEL")
+
 	d.mru.reset()
 
 	return nil

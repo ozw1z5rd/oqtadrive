@@ -22,6 +22,7 @@ package daemon
 
 import (
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 
@@ -136,15 +137,14 @@ func (c *command) putFixedLength(d *Daemon, drive int) error {
 		return fmt.Errorf("only use fixed length PUT during shadowing")
 	}
 
-	ln := int((c.arg(1)-1))*256 + int(c.arg(2))
-	data := make([]byte, ln)
-
-	if err := d.conduit.receive(data); err != nil {
+	// received data won't have the preamble, we need to add this here
+	data := make([]byte, int((c.arg(1)-1))*256+int(c.arg(2))+12)
+	if err := d.conduit.receive(data[d.conduit.fillPreamble(data):]); err != nil {
 		return err
 	}
 
 	//
-	code := data[ln-1]
+	code := data[len(data)-1]
 	if code != 0 {
 		log.WithFields(
 			log.Fields{"drive": drive, "code": code}).Debug("PUT rejected")
@@ -152,13 +152,22 @@ func (c *command) putFixedLength(d *Daemon, drive int) error {
 		return nil
 	}
 
-	ln--
-	data = data[:ln]
+	data = data[:len(data)-1]
 
-	if ln < 200 {
+	if len(data) < 200 {
 		hd, err := microdrive.NewHeader(d.conduit.client, data, true)
+		if hd == nil {
+			log.Warn("no header created")
+			d.mru.reset()
+			return nil
+		}
 		if err != nil {
 			log.Warnf("error creating header: %v", err)
+			hd.Emit(os.Stdout)
+			d.mru.reset()
+			return nil
+		} else {
+			log.WithField("sector", hd.Index()).Info("created header")
 		}
 		d.mru.reset()
 		if err = d.mru.setHeader(hd); err != nil {
@@ -166,17 +175,23 @@ func (c *command) putFixedLength(d *Daemon, drive int) error {
 			d.mru.reset()
 			return nil
 		}
+		log.WithField("sector", hd.Index()).Info("set header")
 
 	} else {
 		rec, err := microdrive.NewRecord(d.conduit.client, data, true)
 		if err != nil {
 			log.Warnf("error creating record: %v", err)
+			d.mru.reset()
+			return nil
+		} else {
+			log.Info("created record")
 		}
 		if err = d.mru.setRecord(rec); err != nil {
 			log.Errorf("error setting record: %v", err)
 			d.mru.reset()
 			return nil
 		}
+		log.Info("set record")
 	}
 
 	if d.mru.isNewSector() {

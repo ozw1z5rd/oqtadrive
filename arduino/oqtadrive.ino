@@ -488,7 +488,9 @@ void endHeaderGap() {
  */
 void setTracksToRecord() {
 	DDRC = 0;
-	PORTC = 0x3f;
+	// when shadowing, don't use pull-ups on the data track inputs,
+	// since this is disturbing hardware drives
+	PORTC = shadowing ? 0x3f & (~MASK_BOTH_TRACKS) : 0x3f;
 }
 
 /*
@@ -773,76 +775,90 @@ void record() {
 // FIXME: check for sync loss while here?
 void shadow() {
 
-	uint16_t headLen = headerLengthMux + 1;
-	uint8_t headH = highByte(headLen) + 1;
-	uint8_t headL = lowByte(headLen);
+	const uint16_t headLen = headerLengthMux - PREAMBLE_LENGTH + 1;
+	const uint8_t headH = highByte(headLen) + 1;
+	const uint8_t headL = lowByte(headLen);
 
-	uint16_t recLen = recordLengthMux + 1;
-	uint8_t recH = highByte(recLen) + 1;
-	uint8_t recL = lowByte(recLen);
+	const uint16_t recLen = recordLengthMux - PREAMBLE_LENGTH + 1;
+	const uint8_t recH = highByte(recLen) + 1;
+	const uint8_t recL = lowByte(recLen);
 
 	while (spinning) {
 
 		checkReplayOrStop();
 
-		if (!(findGap(20) && shadowBlock(headH, headL, headLen - 1))) {
+		if (!findGap(1500, 25000)) { // header not found
 			continue;
 		}
 
-		if (!findGap(4)) {
-			// record not found
+		daemonCmdArgs(CMD_PUT, activeDrive, headH, headL, 0);
+		if (!shadowBlock(headLen - 1)) {
+			continue;
+		}
+
+		if (!findGap(2300, 5000)) { // record not found
 			daemonCmdArgs(CMD_CANCEL, activeDrive, 1, 0, 0);
 			continue;
 		}
 
-		shadowBlock(recH, recL, recLen - 1);
+		daemonCmdArgs(CMD_PUT, activeDrive, recH, recL, 0);
+		shadowBlock(recLen - 1);
 	}
 }
 
 //
-bool shadowBlock(uint8_t bHigh, uint8_t bLow, uint16_t toSend) {
-
-	daemonCmdArgs(CMD_PUT, activeDrive, bHigh, bLow, 0);
+bool shadowBlock(uint16_t toSend) {
 
 	uint16_t read = receiveBlock(false, toSend);
+	_delay_us(20.0); // give last byte enough time to be sent over serial
 
-	if (read == toSend) {
-		UDR0 = 0; // acknowledge block
-		return true;
-	}
+	uint8_t ret = 0;
 
 	if (read < toSend) {
 		Serial.write(buffer, toSend - read); // pad block
 		Serial.flush();
-		UDR0 = toSend - read < 16 ? 0 : 1; // block too short
+		ret = 1; // block too short
+		_delay_us(20.0);
 
-	} else {
-		UDR0 = read - toSend > 16 ? 0 : 2; // block too long, with some tolerance
+	} else if ((read - toSend) > 2) { // slight tolerance
+		ret = 2; // block too long
 	}
 
-	return false;
+	UDR0 = ret;
+	_delay_us(20.0); // also give byte written here enough time to be sent
+
+	return ret == 0;
 }
 
 // FIXME: check for sync loss while here?
-bool findGap(uint8_t gap) {
+//
+// gap	length of gap to find, in us
+// max  max wait time, in us
+//
+bool findGap(uint16_t gap, uint16_t max) {
 
-	register uint8_t now, prev = PINC & MASK_BOTH_TRACKS, elapsed = 0;
+	const uint16_t pause = 100;
+	const uint16_t stop = gap / pause;
 
-	for (register uint8_t n = 0; n < 300; n++) { // max. wait 30 ms
+	register uint16_t elapsed = 0;
 
-		_delay_us(100.0);
+	noInterrupts();
 
-		now = PINC & MASK_BOTH_TRACKS;
-		if (now == prev) {
-			if (++elapsed > gap) {
+	for (register uint16_t n = max / pause; n > 0; n--) {
+
+		_delay_us((float)(pause - 5));
+
+		if ((PINC & MASK_BOTH_TRACKS) == MASK_BOTH_TRACKS) {
+			elapsed++;
+			if (elapsed >= stop) {
+				interrupts();
 				return true;
 			}
-		} else {
-			prev = now;
-			elapsed = 0;
+		} else if (elapsed > 2) {
+			elapsed -= 2;
 		}
 
-		if (n % 10 == 0) { // check for stop every 1 ms
+		if (n % (1000 / pause) == 0) { // check for stop every 1 ms
 			checkReplayOrStop();
 			if (!spinning) {
 				break;
@@ -850,6 +866,7 @@ bool findGap(uint8_t gap) {
 		}
 	}
 
+	interrupts();
 	return false;
 }
 
@@ -963,7 +980,7 @@ uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 			start = end;                               // prepare for next cycle
 		}
 
-		if (read < maxSend) {
+		if (variable || read < maxSend) {
 			UDR0 = d; // send over serial
 		}
 		read++;
