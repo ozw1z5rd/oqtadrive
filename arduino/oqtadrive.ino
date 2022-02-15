@@ -206,6 +206,7 @@ bool IF1 = true;
 // --- state flags ------------------------------------------------------------
 volatile bool spinning    = false;
 volatile bool recording   = false;
+volatile bool canShadow   = false;
 volatile bool shadowing   = false;
 volatile bool message     = false;
 volatile bool headerGap   = false;
@@ -242,6 +243,10 @@ const char QL_HELLO[]     = {CMD_HELLO, 'l' , 'o', 'q'};
 const uint8_t MASK_IF1 = 1;
 const uint8_t MASK_QL  = 2;
 
+const uint8_t MASK_HW_LOCKED   = 1;
+const uint8_t MASK_HW_SHADOW   = 2;
+const uint8_t MASK_HW_SETFLAGS = 128;
+
 const unsigned long DAEMON_TIMEOUT   =  5000;
 const unsigned long RESYNC_THRESHOLD =  4500;
 const unsigned long PING_INTERVAL    = 10000;
@@ -267,7 +272,7 @@ void setup() {
 	ledWrite(IDLE);
 
 	// hardware drive group
-	setHWGroup(HW_GROUP_START, HW_GROUP_END);
+	setHWGroup(HW_GROUP_START, HW_GROUP_END, 0);
 
 	// open channel to daemon & say hello
 	detectInterface(false, false);
@@ -292,11 +297,20 @@ void remoteConfig(uint8_t item, uint8_t arg1, uint8_t arg2) {
 }
 
 //
-void setHWGroup(uint8_t start, uint8_t end) {
-	if (start <= 8 && end <= 8 && start <= end) {
-		hwGroupStart = start;
-		hwGroupEnd = end;
-		maskHwOffset = 1 << (start - 2);
+void setHWGroup(uint8_t start, uint8_t end, uint8_t flags) {
+
+	if ((flags & MASK_HW_SETFLAGS) != 0) {
+		canShadow = (flags & MASK_HW_SHADOW) != 0;
+
+	} else if (!HW_GROUP_LOCK) {
+		if (start <= 8 && end <= 8 && start <= end) {
+			hwGroupStart = start;
+			hwGroupEnd = end;
+			maskHwOffset = 1 << (start - 2);
+		}
+		if (start < 1 && end < 1) {
+			canShadow = false; // reset when drives are turned off
+		}
 	}
 }
 
@@ -678,9 +692,13 @@ void selectDrive() {
 		// avoid turning on a virtual drive when a drive further up
 		// the chain gets selected
 		activeDrive = 0;
-	} else {
-		// turn on shadowing when a h/w drive has been selected
-		shadowing = hwGroupStart <= activeDrive && activeDrive <= hwGroupEnd;
+
+	} else if (hwGroupStart <= activeDrive && activeDrive <= hwGroupEnd) {
+		if (canShadow) { // turn on shadowing if allowed
+			shadowing = true;
+		} else {
+			activeDrive = 0;
+		}
 	}
 
 	activeDrive == 0 ? driveOff() : driveOn();
@@ -970,10 +988,10 @@ uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 				return read;
 			}
 
-			_delay_us(2.0); // short delay to make sure track state has settled
+			_delay_us(3.00); // short delay to make sure track state has settled
 			start = PINC & MASK_BOTH_TRACKS;        //   then take start reading
 			                                        // and wait for end of cycle
-			if (IF1) _delay_us(6.50); else _delay_us(4.50);
+			if (IF1) _delay_us(5.50); else _delay_us(3.50);
 			// When a track has changed state compared to start of cycle at this
 			// point, then it carries a 1 in this cycle, otherwise a 0.
 			d = (d << 1) | ((end = PINC & MASK_BOTH_TRACKS) ^ start);   // store
@@ -1168,9 +1186,7 @@ void daemonCheckControl() {
 		switch (buffer[CMD_LENGTH]) {
 
 			case CMD_MAP:
-				if (!HW_GROUP_LOCK) {
-					setHWGroup(arg1, arg2);
-				}
+				setHWGroup(arg1, arg2, arg3);
 				daemonHWGroup();
 				break;
 
@@ -1188,7 +1204,8 @@ void daemonCheckControl() {
 
 //
 void daemonHWGroup() {
-	daemonCmdArgs(CMD_MAP, hwGroupStart, hwGroupEnd, HW_GROUP_LOCK ? 1 : 0, 0);
+	uint8_t flags = (HW_GROUP_LOCK ? 1 : 0) | (canShadow ? MASK_HW_SHADOW : 0);
+	daemonCmdArgs(CMD_MAP, hwGroupStart, hwGroupEnd, flags, 0);
 }
 
 //

@@ -51,6 +51,9 @@ import (
 */
 
 //
+// FIXME: - cleanup
+//        - auto save after drive stop
+//
 func (c *command) put(d *Daemon) error {
 
 	drive, err := c.drive()
@@ -181,6 +184,9 @@ func (c *command) putFixedLength(d *Daemon, drive int) error {
 		rec, err := microdrive.NewRecord(d.conduit.client, data, true)
 		if err != nil {
 			log.Warnf("error creating record: %v", err)
+			if d.mru.header != nil && d.mru.header.Index() == 167 {
+				rec.Emit(os.Stdout)
+			}
 			d.mru.reset()
 			return nil
 		} else {

@@ -283,6 +283,15 @@ func (c *Command) GetSetting(flag string) (interface{}, error) {
 }
 
 /*
+	IsSet checks whether the provided flag was explicitly specified on the
+	command line. No check is done whether the flag is actually defined for this
+	command.
+*/
+func (c *Command) IsSet(flag string) bool {
+	return viper.IsSet(flag)
+}
+
+/*
 	ParseSettings handles all settings that have been added thus far via the
 	AddSetting method. Afterwards, setting values are available in the variables
 	to which they were bound. This should be called in the exec function that

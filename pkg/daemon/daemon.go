@@ -380,6 +380,34 @@ func (d *Daemon) MapHardwareDrives(start, end int) error {
 	})
 }
 
+// FIXME: not atomic
+func (d *Daemon) IsShadowingHardwareDrives() bool {
+	if d.synced {
+		return d.conduit.hwShadowing
+	}
+	return false
+}
+
+//
+func (d *Daemon) ShadowHardwareDrives(shadow bool) error {
+
+	if d.synced && d.conduit.hwGroupStart < 0 {
+		return fmt.Errorf("no hardware drives")
+	}
+
+	flags := MaskHWSetFlags
+	if shadow {
+		flags |= MaskHWShadowing
+	}
+
+	return d.queueControl(func() error {
+		if d.synced {
+			return d.conduit.send([]byte{CmdMap, 0, 0, byte(flags)})
+		}
+		return fmt.Errorf("not synced with adapter")
+	})
+}
+
 //
 func (d *Daemon) Resync(cl client.Client, reset bool) error {
 

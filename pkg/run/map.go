@@ -32,7 +32,7 @@ func NewMap() *Map {
 	m := &Map{}
 	m.Runner = *NewRunner(
 		`map [-a|--address {address}] [-s|--start {first drive} -e|--end {last drive}]
-      [-o|--off] [-y|--yes]`,
+      [-w|--shadow] [-o|--off] [-y|--yes]`,
 		"map group of hardware drives",
 		`
 Use the map command to move a group of hardware drives to the desired place within
@@ -43,6 +43,7 @@ hardware drive group. Without any options, the current setting is shown.`,
 	m.AddBaseSettings()
 	m.AddSetting(&m.Start, "start", "s", "", -1, "first hardware drive", false)
 	m.AddSetting(&m.End, "end", "e", "", -1, "last hardware drive", false)
+	m.AddSetting(&m.Shadow, "shadow", "w", "", false, "turn shadowing on & off", false)
 	m.AddSetting(&m.Off, "off", "o", "", false, "turn hardware drives off", false)
 	m.AddSetting(&m.Yes, "yes", "y", "", false, "skip confirmation", false)
 
@@ -53,10 +54,11 @@ hardware drive group. Without any options, the current setting is shown.`,
 type Map struct {
 	Runner
 	//
-	Start int
-	End   int
-	Off   bool
-	Yes   bool
+	Start  int
+	End    int
+	Shadow bool
+	Off    bool
+	Yes    bool
 }
 
 //
@@ -69,10 +71,16 @@ func (m *Map) Run() error {
 		m.End = 0
 	}
 
+	var shadow string
+	explicitShadow := m.IsSet("shadow")
+	if explicitShadow {
+		shadow = fmt.Sprintf("shadow=%v", m.Shadow)
+	}
+
 	var resp io.ReadCloser
 	var err error
 
-	if m.Start == -1 && m.End == -1 {
+	if m.Start == -1 && m.End == -1 && !explicitShadow {
 		resp, err = m.apiCall("GET", "/map", false, nil)
 		fmt.Println()
 
@@ -80,7 +88,8 @@ func (m *Map) Run() error {
 		if m.Start == 0 && m.End == 0 {
 			fmt.Println("\nturning hardware drives off")
 
-		} else if !m.Yes && !GetUserConfirmation(fmt.Sprintf(`
+		} else if m.Start > 0 && m.End > 0 && !m.Yes &&
+			!GetUserConfirmation(fmt.Sprintf(`
 changing hardware drives
 
 first drive: %d
@@ -94,8 +103,11 @@ Note: Specifying the wrong number of hardware drives will cause problems. If
 		}
 
 		fmt.Println("\nreconfiguring adapter, this could take a moment...")
-		resp, err = m.apiCall("PUT",
-			fmt.Sprintf("/map?start=%d&end=%d", m.Start, m.End), false, nil)
+		params := fmt.Sprintf("start=%d&end=%d", m.Start, m.End)
+		if shadow != "" {
+			params = fmt.Sprintf("%s&%s", params, shadow)
+		}
+		resp, err = m.apiCall("PUT", fmt.Sprintf("/map?%s", params), false, nil)
 	}
 
 	if err != nil {

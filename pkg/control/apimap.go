@@ -38,7 +38,8 @@ func (a *api) getDriveMap(w http.ResponseWriter, req *http.Request) {
 		if start == 0 && end == 0 {
 			msg = "hardware drives are off"
 		} else {
-			msg = fmt.Sprintf("hardware drives: start=%d, end=%d", start, end)
+			msg = fmt.Sprintf("hardware drives: start=%d, end=%d, shadowing=%v",
+				start, end, a.daemon.IsShadowingHardwareDrives())
 		}
 		if locked {
 			msg += " (locked)"
@@ -60,12 +61,38 @@ func (a *api) setDriveMap(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if handleError(a.daemon.MapHardwareDrives(start, end),
+	shadow := getArg(req, "shadow")
+
+	if shadow == "" { // set drives
+		if handleError(a.daemon.MapHardwareDrives(start, end),
+			http.StatusUnprocessableEntity, w) {
+			return
+		}
+		sendReply([]byte(fmt.Sprintf(
+			"mapped hardware drives: start=%d, end=%d", start, end)),
+			http.StatusOK, w)
+		return
+	}
+
+	// set shadowing
+	if start > -1 || end > -1 {
+		handleError(fmt.Errorf("don't set shadowing while setting drives"),
+			http.StatusNotAcceptable, w)
+		return
+	}
+
+	if handleError(a.daemon.ShadowHardwareDrives(shadow == "true"),
 		http.StatusUnprocessableEntity, w) {
 		return
 	}
 
+	if shadow == "true" {
+		shadow = "on"
+	} else {
+		shadow = "off"
+	}
+
 	sendReply([]byte(fmt.Sprintf(
-		"mapped hardware drives: start=%d, end=%d", start, end)),
-		http.StatusOK, w)
+		"switched hardware drive shadowing %s", shadow)), http.StatusOK, w)
+	return
 }

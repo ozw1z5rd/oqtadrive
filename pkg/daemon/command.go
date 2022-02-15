@@ -48,6 +48,10 @@ const CmdConfigRumble = 'r'          // rumble strength item code
 const CmdConfigRumbleMin = 0         // minimum rumble strength
 const CmdConfigRumbleMax = 255       // maximum rumble strength
 
+const MaskHWGroupLocked = 1
+const MaskHWShadowing = 2
+const MaskHWSetFlags = 128
+
 const MaskIF1 = 1
 const MaskQL = 2
 

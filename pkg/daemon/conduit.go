@@ -65,6 +65,7 @@ type conduit struct {
 	hwGroupStart  int
 	hwGroupEnd    int
 	hwGroupLocked bool
+	hwShadowing   bool
 	//
 	sendBuf []byte
 }
