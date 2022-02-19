@@ -27,6 +27,7 @@ import (
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/raw"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
@@ -45,8 +46,9 @@ var recordIndex = map[string][2]int{
 
 //
 type record struct {
-	muxed []byte
-	block *raw.Block
+	muxed      []byte
+	block      *raw.Block
+	validation util.Validation
 }
 
 //
@@ -194,25 +196,34 @@ func (r *record) FixChecksums() error {
 //
 func (r *record) Validate() error {
 
-	if err := verifyQLCheckSum(r.CalculateHeaderChecksum(),
+	var err error
+
+	if err = verifyQLCheckSum(r.CalculateHeaderChecksum(),
 		r.block.GetInt("headerChecksum")); err != nil {
-		return fmt.Errorf("invalid record header check sum: %v", err)
-	}
+		err = fmt.Errorf("invalid record header check sum: %v", err)
 
-	if err := verifyQLCheckSum(r.CalculateDataChecksum(),
+	} else if err = verifyQLCheckSum(r.CalculateDataChecksum(),
 		r.block.GetInt("dataChecksum")); err != nil {
-		return fmt.Errorf("invalid record data check sum: %v", err)
-	}
+		err = fmt.Errorf("invalid record data check sum: %v", err)
 
-	if r.Flags() == 0xaa && r.Index() == 0x55 &&
+	} else if r.Flags() == 0xaa && r.Index() == 0x55 &&
 		r.block.GetInt("headerChecksum") == 0x55aa {
-		if err := verifyQLCheckSum(r.CalculateExtraDataChecksum(),
+		if err = verifyQLCheckSum(r.CalculateExtraDataChecksum(),
 			r.block.GetInt("extraDataChecksum")); err != nil {
-			return fmt.Errorf("invalid record extra data check sum: %v", err)
+			err = fmt.Errorf("invalid record extra data check sum: %v", err)
 		}
 	}
 
-	return nil
+	r.validation.SetError(err)
+	return err
+}
+
+//
+func (r *record) ValidationError() error {
+	if !r.validation.WasValidated() {
+		r.Validate()
+	}
+	return r.validation.GetError()
 }
 
 //

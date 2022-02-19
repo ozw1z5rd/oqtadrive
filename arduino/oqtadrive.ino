@@ -951,10 +951,9 @@ uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 			return 0;
 		}
 
-		_delay_us(2.0); // short delay to make sure track state has settled
-		start = PINC & MASK_BOTH_TRACKS;
+		start = ~start & MASK_BOTH_TRACKS;
 
-		if (IF1) _delay_us(6.50); else _delay_us(4.50);
+		if (IF1) _delay_us(9.00); else _delay_us(7.00);
 
 		if (((end = PINC & MASK_BOTH_TRACKS) ^ start) == 0) {
 			if (ones > 0) {
@@ -988,10 +987,13 @@ uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 				return read;
 			}
 
-			_delay_us(3.00); // short delay to make sure track state has settled
-			start = PINC & MASK_BOTH_TRACKS;        //   then take start reading
-			                                        // and wait for end of cycle
-			if (IF1) _delay_us(5.50); else _delay_us(3.50);
+			// state of tracks at start of new cycle is always the opposite of
+			// the state at the end of the previous cycle
+			start = ~start & MASK_BOTH_TRACKS;
+
+			// wait for approx. 75% of cycle to elapse
+			if (IF1) _delay_us(9.00); else _delay_us(7.00);
+
 			// When a track has changed state compared to start of cycle at this
 			// point, then it carries a 1 in this cycle, otherwise a 0.
 			d = (d << 1) | ((end = PINC & MASK_BOTH_TRACKS) ^ start);   // store

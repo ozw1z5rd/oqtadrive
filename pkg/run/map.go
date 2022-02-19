@@ -38,7 +38,11 @@ func NewMap() *Map {
 Use the map command to move a group of hardware drives to the desired place within
 the Microdrive daisy chain. Start and end denote the first and last drive of the
 hardware drive group. Without any options, the current setting is shown.`,
-		"", runnerHelpEpilogue, m.Run)
+		"", `- Shadowing is still a highly experimental feature! Performance very much depends
+  on the state of the cartridge and the proper setup of the drive (motor speed,
+  tape head azimuth). Shadowing a cartridge may yield poor or unusable results.
+
+`+runnerHelpEpilogue, m.Run)
 
 	m.AddBaseSettings()
 	m.AddSetting(&m.Start, "start", "s", "", -1, "first hardware drive", false)

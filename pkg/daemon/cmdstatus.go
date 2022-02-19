@@ -80,7 +80,10 @@ func (c *command) status(d *Daemon) error {
 		"drive": drive, "action": action, "state": msg}).Infof("STATUS")
 
 	if c.arg(1) == 1 { // drive started, send cartridge state to adapter
+
+		log.Debug("STATUS sending reply")
 		d.conduit.send([]byte{state})
+
 		if cart != nil {
 			ctx, cancel := context.WithTimeout(
 				context.Background(), 5*time.Millisecond)
@@ -89,11 +92,14 @@ func (c *command) status(d *Daemon) error {
 				return fmt.Errorf("could not lock cartridge in drive %d", drive)
 			}
 		}
+
 	} else if cart != nil {
 		if err := helper.AutoSave(drive, cart); err != nil {
 			log.Errorf("auto-saving drive %d failed: %v", drive, err)
 		}
 		cart.Unlock()
+	} else {
+		log.Warn("no cartridge")
 	}
 
 	return err

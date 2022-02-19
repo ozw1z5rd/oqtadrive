@@ -27,6 +27,7 @@ import (
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/raw"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
@@ -41,8 +42,9 @@ var headerIndex = map[string][2]int{
 
 //
 type header struct {
-	muxed []byte
-	block *raw.Block
+	muxed      []byte
+	block      *raw.Block
+	validation util.Validation
 }
 
 //
@@ -125,10 +127,20 @@ func (h *header) Validate() error {
 	got := h.CalculateChecksum()
 
 	if want != got {
-		return fmt.Errorf(
+		err := fmt.Errorf(
 			"invalid sector header check sum, want %d, got %d", want, got)
+		h.validation.SetError(err)
+		return err
 	}
 	return nil
+}
+
+//
+func (h *header) ValidationError() error {
+	if !h.validation.WasValidated() {
+		h.Validate()
+	}
+	return h.validation.GetError()
 }
 
 //

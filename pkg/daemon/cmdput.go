@@ -27,17 +27,22 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive"
+	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 /*
 	The PUT command is used to send sections (header or record) to the daemon.
 
-	variable length section, pending:
+	variable length section, initially pending:
 
 		arg 0:	drive number
 		    1:	`0`
 		    2:	`0` to go ahead, `1` for abort; conduit determines length
 		        based on contents of initial bytes
+
+		This requires highly reliable section data, and is used when recording
+		data sent by IF1/QL.
 
 	fixed length section:
 
@@ -45,14 +50,19 @@ import (
 		    1:	section length high byte +1, i.e. never `0`
 		    2:	section length low byte
 
-	The last byte of the received section flags whether the section should be
-	accepted (0) or rejected (>0). Values larger than 0 indicate the reason for
-	rejection.
+		The last byte of the received section flags whether the section should
+		be accepted (0) or rejected (>0). Values larger than 0 indicate the
+		reason for rejection:
+
+			1:	section too short
+			2:  section too long
+
+		This mode is used during drive shadowing, as data is not very reliable
+		there, so variable length section cannot be used.
 */
 
 //
 // FIXME: - cleanup
-//        - auto save after drive stop
 //
 func (c *command) put(d *Daemon) error {
 
@@ -134,7 +144,7 @@ func (c *command) putVariableLength(d *Daemon, drive int) error {
 }
 
 //
-func (c *command) putFixedLength(d *Daemon, drive int) error {
+func (c *command) putFixedLength(d *Daemon, drive int) (err error) {
 
 	if !d.IsHardwareDrive(drive) {
 		return fmt.Errorf("only use fixed length PUT during shadowing")
@@ -146,8 +156,7 @@ func (c *command) putFixedLength(d *Daemon, drive int) error {
 		return err
 	}
 
-	//
-	code := data[len(data)-1]
+	code := data[len(data)-1] // rejection code
 	if code != 0 {
 		log.WithFields(
 			log.Fields{"drive": drive, "code": code}).Debug("PUT rejected")
@@ -155,67 +164,138 @@ func (c *command) putFixedLength(d *Daemon, drive int) error {
 		return nil
 	}
 
-	data = data[:len(data)-1]
+	data = data[:len(data)-1] // remove rejection code
+	discard := true
 
 	if len(data) < 200 {
+
 		hd, err := microdrive.NewHeader(d.conduit.client, data, true)
+
+		if err != nil { // FIXME replace corrupted header with generated one
+			log.Warnf("error creating header: %v", err)
+			hd.Emit(os.Stdout) // FIXME
+		}
+
 		if hd == nil {
 			log.Warn("no header created")
-			d.mru.reset()
-			return nil
-		}
-		if err != nil {
-			log.Warnf("error creating header: %v", err)
-			hd.Emit(os.Stdout)
-			d.mru.reset()
-			return nil
+
 		} else {
 			log.WithField("sector", hd.Index()).Info("created header")
-		}
-		d.mru.reset()
-		if err = d.mru.setHeader(hd); err != nil {
-			log.Errorf("error setting header: %v", err)
 			d.mru.reset()
-			return nil
+			if err = d.mru.setHeader(hd); err != nil {
+				log.Errorf("error setting header: %v", err)
+			} else {
+				log.WithField("sector", hd.Index()).Info("set header")
+				discard = false
+			}
 		}
-		log.WithField("sector", hd.Index()).Info("set header")
 
 	} else {
+
 		rec, err := microdrive.NewRecord(d.conduit.client, data, true)
+
 		if err != nil {
 			log.Warnf("error creating record: %v", err)
-			if d.mru.header != nil && d.mru.header.Index() == 167 {
-				rec.Emit(os.Stdout)
-			}
-			d.mru.reset()
-			return nil
+			rec.Emit(os.Stdout) // FIXME
+
+		}
+
+		if rec == nil {
+			log.Warn("no record created")
+
 		} else {
 			log.Info("created record")
+			if err = d.mru.setRecord(rec); err != nil {
+				log.Errorf("error setting record: %v", err)
+			} else {
+				log.Info("set record")
+				discard = false
+			}
 		}
-		if err = d.mru.setRecord(rec); err != nil {
-			log.Errorf("error setting record: %v", err)
-			d.mru.reset()
-			return nil
-		}
-		log.Info("set record")
+	}
+
+	if discard {
+		d.mru.reset()
+		return nil
 	}
 
 	if d.mru.isNewSector() {
+
 		sec, err := d.mru.createSector()
 		if err != nil {
 			log.Warnf("error creating sector: %v", err)
 		}
 
 		if cart := d.getCartridge(drive); cart != nil {
-			cart.SetSectorAt(sec.Index(), sec)
-			log.WithFields(log.Fields{
+
+			logger := log.WithFields(log.Fields{
 				"drive":  drive,
-				"sector": sec.Index(),
-			}).Debug("PUT sector complete")
+				"sector": sec.Index()})
+
+			if p := cart.GetSectorAt(sec.Index()); p != nil {
+				if hd := p.Header(); hd == nil || hd.ValidationError() != nil {
+					p.SetHeader(sec.Header())
+					shadowAnnotate(cart, p, "health.headers.bad")
+					logger.Debug("PUT header amended")
+				}
+				if rec := p.Record(); rec == nil || rec.ValidationError() != nil {
+					p.SetRecord(sec.Record())
+					shadowAnnotate(cart, p, "health.records.bad")
+					logger.Debug("PUT record amended")
+				}
+
+			} else {
+				cart.SetSectorAt(sec.Index(), sec)
+				shadowAnnotate(cart, sec, "")
+				logger.Debug("PUT sector complete")
+			}
+
 		} else {
 			return fmt.Errorf("error creating sector: no cartridge")
 		}
 	}
 
 	return nil
+}
+
+//
+func shadowAnnotate(cart base.Cartridge, sector base.Sector, ammended string) {
+
+	if ammended == "" { // new sector added
+		adjustShadowAnnotation(cart, "health.sectors", 1)
+		bad := false
+		if sector.Header().ValidationError() != nil {
+			adjustShadowAnnotation(cart, "health.headers.bad", 1)
+			bad = true
+		}
+		if sector.Record().ValidationError() != nil {
+			adjustShadowAnnotation(cart, "health.records.bad", 1)
+			bad = true
+		}
+		if bad {
+			adjustShadowAnnotation(cart, "health.sectors.bad", 1)
+		}
+
+	} else {
+		adjustShadowAnnotation(cart, ammended, -1)
+		if sector.Header().ValidationError() == nil &&
+			sector.Record().ValidationError() == nil {
+			adjustShadowAnnotation(cart, "health.sectors.bad", -1)
+		}
+	}
+
+	cart.SetModified(true)
+}
+
+//
+func adjustShadowAnnotation(cart base.Cartridge, key string, val int) {
+	cart.Annotate(key, getShadowAnnotation(cart, key).Int()+val)
+}
+
+//
+func getShadowAnnotation(cart base.Cartridge, key string) *util.Annotation {
+	if cart.HasAnnotation(key) {
+		return cart.GetAnnotation(key)
+	}
+	return cart.Annotate(key, 0)
 }

@@ -27,6 +27,7 @@ import (
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/raw"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
@@ -55,8 +56,9 @@ var recordIndexEarlyROMs = map[string][2]int{
 
 //
 type record struct {
-	muxed []byte
-	block *raw.Block
+	muxed      []byte
+	block      *raw.Block
+	validation util.Validation
 }
 
 //
@@ -180,6 +182,8 @@ func (r *record) FixChecksums() error {
 //
 func (r *record) Validate() error {
 
+	var err error
+
 	// FORMAT records from earlier ROMs do not use correct checksums
 	formatEarlyROM := r.block.Length() > RecordLength
 
@@ -192,29 +196,39 @@ func (r *record) Validate() error {
 	got := r.CalculateHeaderChecksum()
 
 	if want != got {
-		return fmt.Errorf(
+		err = fmt.Errorf(
 			"invalid record descriptor check sum, want %d, got %d", want, got)
-	}
 
-	if formatEarlyROM {
-		want = 210
 	} else {
-		want = r.DataChecksum()
-	}
-	got = r.CalculateDataChecksum()
+		if formatEarlyROM {
+			want = 210
+		} else {
+			want = r.DataChecksum()
+		}
+		got = r.CalculateDataChecksum()
 
-	if want != got {
-		// FIXME: is this really correct?
-		// calculate checksum only based on actual record data length
-		// background: during ERASE, there always seems to be a bit set
-		// somewhere, although all should be zero...
-		if r.Flags() != 0 {
-			return fmt.Errorf(
-				"invalid record data check sum, want %d, got %d", want, got)
+		if want != got {
+			// FIXME: is this really correct?
+			// calculate checksum only based on actual record data length
+			// background: during ERASE, there always seems to be a bit set
+			// somewhere, although all should be zero...
+			if r.Flags() != 0 {
+				err = fmt.Errorf(
+					"invalid record data check sum, want %d, got %d", want, got)
+			}
 		}
 	}
 
-	return nil
+	r.validation.SetError(err)
+	return err
+}
+
+//
+func (r *record) ValidationError() error {
+	if !r.validation.WasValidated() {
+		r.Validate()
+	}
+	return r.validation.GetError()
 }
 
 //

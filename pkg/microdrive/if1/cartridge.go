@@ -51,7 +51,7 @@ func (c *cartridge) List(w io.Writer) {
 
 	for ix := 0; ix < c.SectorCount(); ix++ {
 
-		if sec := c.GetNextSector(); sec != nil {
+		if sec := c.GetSectorAt(ix); sec != nil {
 			if rec := sec.Record(); rec != nil {
 
 				if rec.Flags()&RecordFlagsUsed == 0 {

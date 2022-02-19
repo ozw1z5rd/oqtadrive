@@ -46,7 +46,8 @@ func (a *api) driveInfo(w http.ResponseWriter, req *http.Request, info string) {
 		return
 	}
 
-	if a.daemon.GetStatus(drive) == daemon.StatusHardware {
+	hw := a.daemon.GetStatus(drive) == daemon.StatusHardware
+	if hw && !a.daemon.IsShadowingHardwareDrives() {
 		sendReply([]byte(fmt.Sprintf(
 			"hardware drive mapped to slot %d", drive)),
 			http.StatusOK, w)
@@ -71,11 +72,33 @@ func (a *api) driveInfo(w http.ResponseWriter, req *http.Request, info string) {
 	read, write := io.Pipe()
 
 	go func() {
+
 		switch info {
+
 		case "dump":
 			cart.Emit(write)
+
 		case "ls":
+			if hw {
+				fmt.Fprintf(write, "\nshadowed hardware drive\n")
+			}
+
 			cart.List(write)
+
+			if cart.HasAnnotation("health.sectors") {
+				health := 0
+				sec := cart.GetAnnotation("health.sectors").Int()
+				if sec > 0 {
+					health = 100 * (sec - cart.GetAnnotation("health.sectors.bad").Int()) / sec
+				}
+				fmt.Fprintf(write,
+					"sector health: %d%%\n  %d bad sectors (%d headers, %d records)\n\n",
+					health,
+					cart.GetAnnotation("health.sectors.bad").Int(),
+					cart.GetAnnotation("health.headers.bad").Int(),
+					cart.GetAnnotation("health.records.bad").Int())
+			}
+
 		}
 		write.Close()
 	}()

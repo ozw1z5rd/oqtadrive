@@ -25,6 +25,7 @@ import (
 	"io"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
@@ -99,6 +100,10 @@ type CartridgeBase interface {
 
 	RewindAccessIx(skipEmpty bool) int
 
+	Annotate(key string, value interface{}) *util.Annotation
+	HasAnnotation(key string) bool
+	GetAnnotation(key string) *util.Annotation
+
 	Emit(w io.Writer)
 }
 
@@ -147,6 +152,10 @@ type Header interface {
 
 	// Validate validates the header
 	Validate() error
+
+	// ValidationError returns the validation error from last call to Validate;
+	// if the header has never been validated, Validate is called
+	ValidationError() error
 }
 
 //
@@ -178,4 +187,8 @@ type Record interface {
 
 	// Validate validates the record
 	Validate() error
+
+	// ValidationError returns the validation error from last call to Validate;
+	// if the record has never been validated, Validate is called
+	ValidationError() error
 }

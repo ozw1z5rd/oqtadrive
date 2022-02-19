@@ -1,6 +1,6 @@
 /*
    OqtaDrive - Sinclair Microdrive emulator
-   Copyright (c) 2021, Alexander Vollschwitz
+   Copyright (c) 2022, Alexander Vollschwitz
 
    This file is part of OqtaDrive.
 
@@ -18,46 +18,26 @@
    along with OqtaDrive. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package format
-
-import (
-	log "github.com/sirupsen/logrus"
-
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
-)
+package util
 
 //
-func RepairOrder(cart base.Cartridge) {
+type Validation struct {
+	validated bool
+	err       error
+}
 
-	if cart == nil {
-		return
-	}
+//
+func (v *Validation) WasValidated() bool {
+	return v.validated
+}
 
-	cmp := 0
+//
+func (v *Validation) SetError(e error) {
+	v.validated = true
+	v.err = e
+}
 
-	cart.SeekToStart()
-	var last base.Sector
-
-	for ix := 0; ix < cart.SectorCount(); ix++ {
-		sec := cart.GetSectorAt(ix)
-		if sec == nil {
-			continue
-		}
-		if last != nil {
-			if sec.Index() > last.Index() {
-				cmp++
-			}
-			if sec.Index() < last.Index() {
-				cmp--
-			}
-		}
-		last = sec
-	}
-
-	if cmp < 0 {
-		return
-	}
-
-	log.Debug("reverting sector order")
-	cart.Revert()
+//
+func (v *Validation) GetError() error {
+	return v.err
 }

@@ -28,6 +28,7 @@ import (
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/raw"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
@@ -42,8 +43,9 @@ var headerIndex = map[string][2]int{
 
 //
 type header struct {
-	muxed []byte
-	block *raw.Block
+	muxed      []byte
+	block      *raw.Block
+	validation util.Validation
 }
 
 //
@@ -132,9 +134,19 @@ func (h *header) FixChecksum() error {
 func (h *header) Validate() error {
 	if err := verifyQLCheckSum(
 		h.CalculateChecksum(), h.block.GetInt("checksum")); err != nil {
-		return fmt.Errorf("invalid sector header check sum: %v", err)
+		err = fmt.Errorf("invalid sector header check sum: %v", err)
+		h.validation.SetError(err)
+		return err
 	}
 	return nil
+}
+
+//
+func (h *header) ValidationError() error {
+	if !h.validation.WasValidated() {
+		h.Validate()
+	}
+	return h.validation.GetError()
 }
 
 //

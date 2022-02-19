@@ -28,15 +28,17 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
 func NewCartridge(c client.Client, sectorCount int) *cartridge {
 	return &cartridge{
-		client:   c,
-		sectors:  make([]Sector, sectorCount),
-		accessIx: sectorCount - 1,
-		lock:     make(chan bool, 1),
+		client:      c,
+		sectors:     make([]Sector, sectorCount),
+		accessIx:    sectorCount - 1,
+		lock:        make(chan bool, 1),
+		annotations: make(map[string]*util.Annotation),
 	}
 }
 
@@ -53,6 +55,8 @@ type cartridge struct {
 	autosaved bool
 	//
 	lock chan bool
+	//
+	annotations map[string]*util.Annotation
 }
 
 //
@@ -271,11 +275,31 @@ func (c *cartridge) ensureIx(ix int) int {
 }
 
 //
+func (c *cartridge) Annotate(key string, value interface{}) *util.Annotation {
+	a := util.NewAnnotation(key, value)
+	c.annotations[key] = a
+	return a
+}
+
+//
+func (c *cartridge) HasAnnotation(key string) bool {
+	_, ok := c.annotations[key]
+	return ok
+}
+
+//
+func (c *cartridge) GetAnnotation(key string) *util.Annotation {
+	if a, ok := c.annotations[key]; ok {
+		return a
+	}
+	return &util.Annotation{}
+}
+
+//
 func (c *cartridge) Emit(w io.Writer) {
 	c.SeekToStart()
 	for ix := 0; ix < c.SectorCount(); ix++ {
-		sec := c.GetNextSector()
-		if sec != nil {
+		if sec := c.GetSectorAt(ix); sec != nil {
 			sec.Emit(w)
 		}
 	}
