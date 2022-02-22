@@ -27,8 +27,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive"
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
-	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 /*
@@ -61,8 +59,6 @@ import (
 		there, so variable length section cannot be used.
 */
 
-//
-// FIXME: - cleanup
 //
 func (c *command) put(d *Daemon) error {
 
@@ -124,27 +120,35 @@ func (c *command) putVariableLength(d *Daemon, drive int) error {
 	}
 
 	if d.mru.isNewSector() {
-		sec, err := d.mru.createSector()
-		if err != nil {
-			return fmt.Errorf("error creating sector: %v", err)
-		}
-
-		if cart := d.getCartridge(drive); cart != nil {
-			cart.SetNextSector(sec)
-			log.WithFields(log.Fields{
-				"drive":  drive,
-				"sector": sec.Index(),
-			}).Debug("PUT sector complete")
-		} else {
-			return fmt.Errorf("error creating sector: no cartridge")
-		}
+		return c.variableLengthNewSector(d, drive)
 	}
 
 	return nil
 }
 
 //
-func (c *command) putFixedLength(d *Daemon, drive int) (err error) {
+func (c *command) variableLengthNewSector(d *Daemon, drive int) error {
+
+	sec, err := d.mru.createSector()
+
+	if err != nil {
+		return fmt.Errorf("error creating sector: %v", err)
+	}
+
+	if cart := d.getCartridge(drive); cart != nil {
+		cart.SetNextSector(sec)
+		log.WithFields(
+			log.Fields{
+				"drive":  drive,
+				"sector": sec.Index()}).Debug("PUT sector complete")
+		return nil
+	}
+
+	return fmt.Errorf("error creating sector: no cartridge")
+}
+
+//
+func (c *command) putFixedLength(d *Daemon, drive int) error {
 
 	if !d.IsHardwareDrive(drive) {
 		return fmt.Errorf("only use fixed length PUT during shadowing")
@@ -171,7 +175,7 @@ func (c *command) putFixedLength(d *Daemon, drive int) (err error) {
 
 		hd, err := microdrive.NewHeader(d.conduit.client, data, true)
 
-		if err != nil { // FIXME replace corrupted header with generated one
+		if err != nil {
 			log.Warnf("error creating header: %v", err)
 			hd.Emit(os.Stdout) // FIXME
 		}
@@ -197,7 +201,6 @@ func (c *command) putFixedLength(d *Daemon, drive int) (err error) {
 		if err != nil {
 			log.Warnf("error creating record: %v", err)
 			rec.Emit(os.Stdout) // FIXME
-
 		}
 
 		if rec == nil {
@@ -220,64 +223,79 @@ func (c *command) putFixedLength(d *Daemon, drive int) (err error) {
 	}
 
 	if d.mru.isNewSector() {
-
-		sec, err := d.mru.createSector()
-		if err != nil {
-			log.Warnf("error creating sector: %v", err)
-		}
-
-		if cart := d.getCartridge(drive); cart != nil {
-
-			logger := log.WithFields(log.Fields{
-				"drive":  drive,
-				"sector": sec.Index()})
-
-			if p := cart.GetSectorAt(sec.Index()); p != nil {
-				if hd := p.Header(); hd == nil || hd.ValidationError() != nil {
-					p.SetHeader(sec.Header())
-					shadowAnnotate(cart, p, "health.headers.bad")
-					logger.Debug("PUT header amended")
-				}
-				if rec := p.Record(); rec == nil || rec.ValidationError() != nil {
-					p.SetRecord(sec.Record())
-					shadowAnnotate(cart, p, "health.records.bad")
-					logger.Debug("PUT record amended")
-				}
-
-			} else {
-				cart.SetSectorAt(sec.Index(), sec)
-				shadowAnnotate(cart, sec, "")
-				logger.Debug("PUT sector complete")
-			}
-
-		} else {
-			return fmt.Errorf("error creating sector: no cartridge")
-		}
+		return c.fixedLengthNewSector(d, drive)
 	}
 
 	return nil
 }
 
 //
+func (c *command) fixedLengthNewSector(d *Daemon, drive int) error {
+
+	sec, err := d.mru.createSector()
+
+	if err != nil {
+		log.Warnf("error creating sector: %v", err)
+	}
+
+	if cart := d.getCartridge(drive); cart != nil {
+
+		ix := sec.Index()
+		logger := log.WithFields(log.Fields{"drive": drive, "sector": ix})
+
+		if p := cart.GetSectorAt(cart.SectorToSlice(ix)); p != nil {
+
+			if hd := p.Header(); hd == nil || hd.ValidationError() != nil {
+				p.SetHeader(sec.Header())
+				cart.SetModified(true)
+				logger.Debug("PUT header amended")
+			}
+
+			if rec := p.Record(); rec == nil || rec.ValidationError() != nil {
+				p.SetRecord(sec.Record())
+				cart.SetModified(true)
+				logger.Debug("PUT record amended")
+			}
+
+		} else {
+			cart.SetSectorAt(cart.SectorToSlice(ix), sec)
+			cart.SetModified(true)
+			if ix > getShadowAnnotation(cart, AnnotationTopSector).Int() {
+				cart.Annotate(AnnotationTopSector, ix)
+			}
+			logger.Debug("PUT sector complete")
+		}
+
+		return nil
+	}
+
+	return fmt.Errorf("error creating sector: no cartridge")
+}
+
+/*
 func shadowAnnotate(cart base.Cartridge, sector base.Sector, ammended string) {
 
 	if ammended == "" { // new sector added
 		adjustShadowAnnotation(cart, "health.sectors", 1)
 		bad := false
+
 		if sector.Header().ValidationError() != nil {
 			adjustShadowAnnotation(cart, "health.headers.bad", 1)
 			bad = true
 		}
+
 		if sector.Record().ValidationError() != nil {
 			adjustShadowAnnotation(cart, "health.records.bad", 1)
 			bad = true
 		}
+
 		if bad {
 			adjustShadowAnnotation(cart, "health.sectors.bad", 1)
 		}
 
 	} else {
 		adjustShadowAnnotation(cart, ammended, -1)
+
 		if sector.Header().ValidationError() == nil &&
 			sector.Record().ValidationError() == nil {
 			adjustShadowAnnotation(cart, "health.sectors.bad", -1)
@@ -286,16 +304,4 @@ func shadowAnnotate(cart base.Cartridge, sector base.Sector, ammended string) {
 
 	cart.SetModified(true)
 }
-
-//
-func adjustShadowAnnotation(cart base.Cartridge, key string, val int) {
-	cart.Annotate(key, getShadowAnnotation(cart, key).Int()+val)
-}
-
-//
-func getShadowAnnotation(cart base.Cartridge, key string) *util.Annotation {
-	if cart.HasAnnotation(key) {
-		return cart.GetAnnotation(key)
-	}
-	return cart.Annotate(key, 0)
-}
+*/

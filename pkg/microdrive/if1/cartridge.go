@@ -42,11 +42,27 @@ type cartridge struct {
 }
 
 //
+func (c *cartridge) SectorToSlice(ix int) int {
+	if 0 < ix && ix <= SectorCount {
+		return ix - 1
+	}
+	return -1
+}
+
+//
+func (c *cartridge) SliceToSector(ix int) int {
+	if 0 <= ix && ix < SectorCount {
+		return ix + 1
+	}
+	return -1
+}
+
+//
 func (c *cartridge) List(w io.Writer) {
 
 	fmt.Fprintf(w, "\n%s\n\n", c.Name())
 
-	dir := make(map[string]int)
+	dir := make(map[string]*base.Dir)
 	used := 0
 
 	for ix := 0; ix < c.SectorCount(); ix++ {
@@ -65,13 +81,15 @@ func (c *cartridge) List(w io.Writer) {
 					continue
 				}
 
-				size, ok := dir[name]
-				if ok {
-					size += rec.Length()
-				} else {
-					size = rec.Length()
+				d, ok := dir[name]
+				if !ok {
+					d = &base.Dir{}
+					dir[name] = d
 				}
-				dir[name] = size
+				d.Size += rec.Length()
+				if rec.ValidationError() != nil {
+					d.Corrupted = true
+				}
 			}
 		}
 	}
@@ -82,8 +100,14 @@ func (c *cartridge) List(w io.Writer) {
 	}
 	sort.Strings(files)
 
+	var flags string
 	for _, f := range files {
-		fmt.Fprintf(w, "%-16s%8d\n", f, dir[f])
+		flags = ""
+		d := dir[f]
+		if d.Corrupted {
+			flags = "!"
+		}
+		fmt.Fprintf(w, "%-16s%8d %s\n", f, d.Size, flags)
 	}
 
 	fmt.Fprintf(w, "\n%d of %d sectors used (%dkb free)\n\n",

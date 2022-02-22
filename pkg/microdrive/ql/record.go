@@ -71,6 +71,18 @@ func NewRecord(data []byte, isRaw bool) (*record, error) {
 }
 
 //
+func GenerateRecord() (*record, error) {
+
+	data := make([]byte, RecordLength+FormatExtraBytes)
+	raw.CopySyncPattern(data)
+	raw.CopyDataSyncPattern(data[16:])
+
+	r, _ := NewRecord(data, false)
+	r.FixChecksums()
+	return r, r.Validate()
+}
+
+//
 func (r *record) Client() client.Client {
 	return client.QL
 }
@@ -157,6 +169,7 @@ func (r *record) fixHeaderChecksum() error {
 		"headerChecksum", r.CalculateHeaderChecksum()); err != nil {
 		return err
 	}
+	r.validation.Reset()
 	return nil
 }
 
@@ -166,6 +179,7 @@ func (r *record) fixDataChecksum() error {
 		"dataChecksum", r.CalculateDataChecksum()); err != nil {
 		return err
 	}
+	r.validation.Reset()
 	return nil
 }
 
@@ -175,6 +189,7 @@ func (r *record) fixExtraDataChecksum() error {
 		"extraDataChecksum", r.CalculateExtraDataChecksum()); err != nil {
 		return err
 	}
+	r.validation.Reset()
 	return nil
 }
 
@@ -216,6 +231,13 @@ func (r *record) Validate() error {
 
 	r.validation.SetError(err)
 	return err
+}
+
+//
+func (r *record) Invalidate(msg string) {
+	if r.ValidationError() == nil {
+		r.validation.SetError(fmt.Errorf(msg))
+	}
 }
 
 //

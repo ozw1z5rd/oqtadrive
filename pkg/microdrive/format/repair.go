@@ -39,7 +39,7 @@ func RepairOrder(cart base.Cartridge) {
 	var last base.Sector
 
 	for ix := 0; ix < cart.SectorCount(); ix++ {
-		sec := cart.GetSectorAt(ix)
+		sec := cart.GetNextSector()
 		if sec == nil {
 			continue
 		}

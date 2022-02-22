@@ -27,6 +27,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/xelalexv/oqtadrive/pkg/microdrive"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/format/helper"
 )
@@ -93,14 +94,64 @@ func (c *command) status(d *Daemon) error {
 			}
 		}
 
-	} else if cart != nil {
+	} else if cart != nil { // drive stopped
+
+		// fill in missing sectors when shadowing
+		if d.IsShadowingHardwareDrives() && d.IsHardwareDrive(drive) {
+
+			topIx := getShadowAnnotation(cart, AnnotationTopSector).Int()
+			name := cart.Name()
+
+			for ix := 0; ix < cart.SectorCount(); ix++ {
+
+				sec := cart.GetSectorAt(ix)
+				if sec != nil {
+					continue
+				}
+
+				sec, err = c.generateMissingSector(
+					d, cart.SliceToSector(ix), name, ix > topIx)
+				logger := log.WithField("index", ix)
+				if err != nil {
+					logger.Errorf("failed to generate missing sector: %v", err)
+				} else {
+					cart.SetSectorAt(ix, sec)
+					logger.Info("generated missing sector")
+				}
+			}
+		}
+
 		if err := helper.AutoSave(drive, cart); err != nil {
 			log.Errorf("auto-saving drive %d failed: %v", drive, err)
 		}
 		cart.Unlock()
+
 	} else {
 		log.Warn("no cartridge")
 	}
 
 	return err
+}
+
+//
+func (c *command) generateMissingSector(d *Daemon, index int, name string,
+	valid bool) (base.Sector, error) {
+
+	hd, err := microdrive.GenerateHeader(d.conduit.client, index, name)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"header generation at index %d failed: %v", index, err)
+	}
+
+	rec, err := microdrive.GenerateRecord(d.conduit.client)
+	if err != nil {
+		return nil, fmt.Errorf("record generation failed: %v", err)
+	}
+
+	if !valid {
+		hd.Invalidate("could not shadow")
+		rec.Invalidate("could not shadow")
+	}
+
+	return microdrive.NewSector(hd, rec)
 }

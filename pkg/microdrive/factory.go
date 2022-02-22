@@ -67,6 +67,22 @@ func NewHeader(cl client.Client, data []byte, raw bool) (base.Header, error) {
 }
 
 //
+func GenerateHeader(cl client.Client, number int, name string) (base.Header, error) {
+
+	switch cl {
+
+	case client.IF1:
+		return if1.GenerateHeader(number, name)
+
+	case client.QL:
+		return ql.GenerateHeader(number, name)
+
+	default:
+		return nil, fmt.Errorf("unsupported client type for header: %d", cl)
+	}
+}
+
+//
 func NewRecord(cl client.Client, data []byte, raw bool) (base.Record, error) {
 
 	switch cl {
@@ -76,6 +92,22 @@ func NewRecord(cl client.Client, data []byte, raw bool) (base.Record, error) {
 
 	case client.QL:
 		return ql.NewRecord(data, raw)
+
+	default:
+		return nil, fmt.Errorf("unsupported client type for record: %d", cl)
+	}
+}
+
+//
+func GenerateRecord(cl client.Client) (base.Record, error) {
+
+	switch cl {
+
+	case client.IF1:
+		return if1.GenerateRecord()
+
+	case client.QL:
+		return ql.GenerateRecord()
 
 	default:
 		return nil, fmt.Errorf("unsupported client type for record: %d", cl)

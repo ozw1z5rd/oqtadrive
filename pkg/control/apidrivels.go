@@ -25,6 +25,8 @@ import (
 	"io"
 	"net/http"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/xelalexv/oqtadrive/pkg/daemon"
 )
 
@@ -85,18 +87,46 @@ func (a *api) driveInfo(w http.ResponseWriter, req *http.Request, info string) {
 
 			cart.List(write)
 
-			if cart.HasAnnotation("health.sectors") {
+			if hw {
+				sectors := 0
+				badS := 0
+				badH := 0
+				badR := 0
+
+				for ix := 0; ix < cart.SectorCount(); ix++ {
+					sec := cart.GetSectorAt(ix)
+					if sec == nil {
+						continue
+					}
+					sectors++
+					bad := false
+					if sec.Header() == nil || sec.Header().ValidationError() != nil {
+						log.Debugf("bad header %d: %v", ix, sec.Header().ValidationError())
+						bad = true
+						badH++
+					}
+					if sec.Record() == nil || sec.Record().ValidationError() != nil {
+						log.Debugf("bad record %d: %v", ix, sec.Record().ValidationError())
+						bad = true
+						badR++
+					}
+					if bad {
+						badS++
+					}
+				}
+
+				topIx := cart.GetAnnotation(daemon.AnnotationTopSector).Int()
+				if topIx > 0 {
+					sectors = topIx
+				}
+
 				health := 0
-				sec := cart.GetAnnotation("health.sectors").Int()
-				if sec > 0 {
-					health = 100 * (sec - cart.GetAnnotation("health.sectors.bad").Int()) / sec
+				if sectors > 0 {
+					health = 100 * (sectors - badS) / sectors
 				}
 				fmt.Fprintf(write,
 					"sector health: %d%%\n  %d bad sectors (%d headers, %d records)\n\n",
-					health,
-					cart.GetAnnotation("health.sectors.bad").Int(),
-					cart.GetAnnotation("health.headers.bad").Int(),
-					cart.GetAnnotation("health.records.bad").Int())
+					health, badS, badH, badR)
 			}
 
 		}

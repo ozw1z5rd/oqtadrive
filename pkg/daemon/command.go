@@ -25,6 +25,9 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
@@ -54,6 +57,9 @@ const MaskHWSetFlags = 128
 
 const MaskIF1 = 1
 const MaskQL = 2
+
+// annotation keys
+const AnnotationTopSector = "shadow.sector.top"
 
 var ping = []byte("Ping")
 var pong = []byte("Pong")
@@ -138,4 +144,17 @@ func (c *command) drive() (int, error) {
 		return -1, fmt.Errorf("illegal drive number: %d", drive)
 	}
 	return int(drive), nil
+}
+
+//
+func adjustShadowAnnotation(cart base.Cartridge, key string, val int) {
+	cart.Annotate(key, getShadowAnnotation(cart, key).Int()+val)
+}
+
+//
+func getShadowAnnotation(cart base.Cartridge, key string) *util.Annotation {
+	if cart.HasAnnotation(key) {
+		return cart.GetAnnotation(key)
+	}
+	return cart.Annotate(key, 0)
 }

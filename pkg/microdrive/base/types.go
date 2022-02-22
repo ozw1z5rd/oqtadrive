@@ -33,6 +33,9 @@ type Cartridge interface {
 	//
 	CartridgeBase
 
+	SectorToSlice(ix int) int
+	SliceToSector(ix int) int
+
 	List(w io.Writer)
 }
 
@@ -66,8 +69,6 @@ type CartridgeBase interface {
 	// sector afterwards.
 	GetPreviousSector() Sector
 
-	GetSectorAt(ix int) Sector
-
 	// SetNextSector sets the provided sector at the next access index, whether
 	// there is a sector present at that index or not. Access index points to the
 	// slot of the set sector afterwards.
@@ -78,6 +79,7 @@ type CartridgeBase interface {
 	// to the slot of the set sector afterwards.
 	SetPreviousSector(s Sector)
 
+	GetSectorAt(ix int) Sector
 	SetSectorAt(ix int, s Sector)
 
 	IsFormatted() bool
@@ -153,6 +155,10 @@ type Header interface {
 	// Validate validates the header
 	Validate() error
 
+	// Invalidate invalidates the header if it is currently valid; if Validate
+	// has never been called on the header, it is called first
+	Invalidate(msg string)
+
 	// ValidationError returns the validation error from last call to Validate;
 	// if the header has never been validated, Validate is called
 	ValidationError() error
@@ -187,6 +193,10 @@ type Record interface {
 
 	// Validate validates the record
 	Validate() error
+
+	// Invalidate invalidates the record if it is currently valid; if Validate
+	// has never been called on the record, it is called first
+	Invalidate(msg string)
 
 	// ValidationError returns the validation error from last call to Validate;
 	// if the record has never been validated, Validate is called

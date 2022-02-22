@@ -43,6 +43,12 @@ func NewCartridge(c client.Client, sectorCount int) *cartridge {
 }
 
 //
+type Dir struct {
+	Size      int
+	Corrupted bool
+}
+
+//
 type cartridge struct {
 	//
 	name           string
@@ -299,7 +305,8 @@ func (c *cartridge) GetAnnotation(key string) *util.Annotation {
 func (c *cartridge) Emit(w io.Writer) {
 	c.SeekToStart()
 	for ix := 0; ix < c.SectorCount(); ix++ {
-		if sec := c.GetSectorAt(ix); sec != nil {
+		sec := c.GetNextSector()
+		if sec != nil {
 			sec.Emit(w)
 		}
 	}

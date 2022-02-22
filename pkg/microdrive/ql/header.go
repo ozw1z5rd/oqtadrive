@@ -68,6 +68,31 @@ func NewHeader(data []byte, isRaw bool) (*header, error) {
 }
 
 //
+func GenerateHeader(number int, name string) (*header, error) {
+
+	if number < 0 || number >= SectorCount {
+		return nil, fmt.Errorf("invalid header number: %d", number)
+	}
+
+	data := make([]byte, HeaderLength)
+	raw.CopySyncPattern(data)
+	data[13] = byte(number)
+
+	if name != "" {
+		data[12] = 0xff
+		bn := []byte(fmt.Sprintf("%-10s", name))
+		if len(bn) > 10 {
+			return nil, fmt.Errorf("invalid name: %s", name)
+		}
+		copy(data[14:], bn)
+	}
+
+	h, _ := NewHeader(data, false)
+	h.FixChecksum()
+	return h, h.Validate()
+}
+
+//
 func (h *header) Client() client.Client {
 	return client.QL
 }
@@ -126,6 +151,7 @@ func (h *header) FixChecksum() error {
 	if err := h.block.SetInt("checksum", h.CalculateChecksum()); err != nil {
 		return err
 	}
+	h.validation.Reset()
 	h.mux()
 	return h.Validate()
 }
@@ -139,6 +165,13 @@ func (h *header) Validate() error {
 		return err
 	}
 	return nil
+}
+
+//
+func (h *header) Invalidate(msg string) {
+	if h.ValidationError() == nil {
+		h.validation.SetError(fmt.Errorf(msg))
+	}
 }
 
 //

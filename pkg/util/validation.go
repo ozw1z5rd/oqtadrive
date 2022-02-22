@@ -27,6 +27,12 @@ type Validation struct {
 }
 
 //
+func (v *Validation) Reset() {
+	v.validated = false
+	v.err = nil
+}
+
+//
 func (v *Validation) WasValidated() bool {
 	return v.validated
 }

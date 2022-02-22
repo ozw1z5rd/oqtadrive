@@ -35,7 +35,7 @@
 //
 //#include "config/dongle.h"
 //#include "config/spectrum.h"
-#include "config/if1.h"
+//#include "config/if1.h"
 //#include "config/ql.h"
 //#include "config/pi.h"
 
@@ -330,9 +330,10 @@ void loop() {
 	}
 
 	debugFlush();
-	ensureDriveState();
 
 	if (spinning) {
+
+		ensureDriveState();
 
 		if (shadowing) {
 			shadow();
@@ -360,6 +361,8 @@ void loop() {
 		// commands at any other time.
 		daemonCheckControl();
 	}
+
+	ensureDriveState();
 }
 
 // ---------------------------------------------- Interface 1 / QL HANDLING ---
