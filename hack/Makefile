@@ -195,7 +195,7 @@ get_arduinocli: sanity
 	echo -e "\nupdating index"
 	"$(ARDUINO_CLI)" core update-index
 	echo -e "\ninstalling core"
-	"$(ARDUINO_CLI)" core install arduino:avr
+	"$(ARDUINO_CLI)" core install arduino:avr@1.8.3
 	echo
 
 
