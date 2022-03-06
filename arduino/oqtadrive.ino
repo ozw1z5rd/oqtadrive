@@ -98,10 +98,11 @@
 	- _delay_us only takes compile time constants as argument
  */
 
-// Change this to true for a calibration run. When not connecting the adapter to
-// an Interface 1/QL during calibration, choose the desired interface via the
-// force settings below.
-#define CALIBRATION false
+// Change the according calibration flag to true for a replay or record
+// calibration run. When not connecting the adapter to an Interface 1/QL during
+// calibration, choose the desired interface via the force settings below.
+#define REPLAY_CALIBRATION false
+#define RECORD_CALIBRATION false
 
 // --- pin assignments --------------------------------------------------------
 //
@@ -320,13 +321,17 @@ void loop() {
 
 	// FIXME: verify that serial is only accessed from main loop
 
-	if (CALIBRATION) {
-		calibrate(0x0f);
+	if (REPLAY_CALIBRATION) {
+		replayCalibrate(0x0f);
 	}
 
 	if (!synced) {
 		driveOff();
 		daemonSync();
+	}
+
+	if (RECORD_CALIBRATION) {
+		recordCalibrate();
 	}
 
 	debugFlush();
@@ -892,6 +897,31 @@ bool findGap(uint16_t gap, uint16_t max) {
 }
 
 /*
+	TODO
+
+	- approx. 640ns for 1 tick
+ */
+void recordCalibrate() {
+
+	calibration = true;
+
+	unsigned long tStart, tElapsed;
+	register uint8_t start = PINC & MASK_BOTH_TRACKS, w;
+
+	setTracksToRecord();
+	noInterrupts();
+
+	tStart = micros();
+	for (w = 0xff; (((PINC & MASK_BOTH_TRACKS) ^ start) == 0) && w > 0; w--);
+	tElapsed = micros() - tStart;
+
+	interrupts();
+
+	debugMsg('T', 'K', (uint8_t) tElapsed);
+	debugFlush();
+}
+
+/*
 	Receive a block (header or record). Change in drive state is checked only
 	while waiting for the start of the block. Once the block starts, no further
 	checks are done. End of data from Interface 1/QL however is detected.
@@ -1072,7 +1102,7 @@ void verify() {
 	Indefinitely replays the given pattern for checking wave form with
 	oscilloscope.
  */
-void calibrate(uint8_t pattern) {
+void replayCalibrate(uint8_t pattern) {
 	calibration = true;
 	for (int ix = 0; ix < BUF_LENGTH; ix++) {
 		buffer[ix] = pattern;
