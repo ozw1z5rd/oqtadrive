@@ -167,6 +167,8 @@ The daemon also serves an HTTP control API on port `8888` (can be changed with `
 
 `load` & `save` currently support `.mdr` and `.mdv` formatted files. I've only tested loading a very limited number of cartridge files available out there though, so there may be surprises. For the *Spectrum* `load` can also load *Z80* snapshot files into the daemon, converting them to *MDR* on the fly.
 
+**Hint**: If loading a cartridge fails due to cartridge corruption (usually caused by incorrect check sums), try the `--repair`/`-r` option. With this, *OqtaDrive* will try to repair the cartridge.
+
 #### Load by Reference
 In addition to uploading a cartridge file to the daemon in order to load it into a virtual drive, it is also possible to just send a *reference* to it. Simply provide this reference instead of the path to the cartridge file. The daemon will then retrieve it accordingly. The type of reference is indicated by a *schema prefix*, and determines how the cartridge will be fetched:
 
