@@ -31,6 +31,12 @@ import (
 //
 func (a *api) watch(w http.ResponseWriter, req *http.Request) {
 
+	if a.stopped {
+		log.Debugf("rejecting watch for %s while stopping", req.RemoteAddr)
+		sendReply([]byte{}, http.StatusGone, w)
+		return
+	}
+
 	timeout, err := strconv.Atoi(req.URL.Query().Get("timeout"))
 	if err != nil || timeout < 0 || 1800 < timeout {
 		timeout = 600
@@ -47,8 +53,13 @@ func (a *api) watch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Infof("sending daemon change to %s", req.RemoteAddr)
-	sendJSONReply(<-update, http.StatusOK, w)
+	upd := <-update
+	if upd != nil {
+		log.Infof("sending daemon change to %s", req.RemoteAddr)
+	} else {
+		log.Debugf("discarding long poll client %s", req.RemoteAddr)
+	}
+	sendJSONReply(upd, http.StatusOK, w)
 }
 
 //
@@ -59,7 +70,7 @@ func (a *api) watchDaemon() {
 	var client string
 	var list []*Cartridge
 
-	for a.server != nil {
+	for !a.stopped {
 
 		time.Sleep(2 * time.Second)
 		change := &Change{}
@@ -100,4 +111,21 @@ func (a *api) watchDaemon() {
 	}
 
 	log.Info("stopped watching for daemon changes")
+}
+
+//
+func (a *api) discardLongPollClients() {
+
+	log.Info("discarding long poll clients...")
+
+Loop:
+	for {
+		select {
+		case cl := <-a.longPollQueue:
+			cl <- nil
+		default:
+			log.Info("all long poll clients discarded")
+			break Loop
+		}
+	}
 }

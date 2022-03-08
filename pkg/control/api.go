@@ -61,6 +61,7 @@ type api struct {
 	//
 	longPollQueue chan chan *Change
 	forceNotify   chan bool
+	stopped       bool
 }
 
 //
@@ -121,12 +122,16 @@ func (a *api) Serve() error {
 //
 func (a *api) Stop() error {
 
+	a.stopped = true
+
 	if a.index != nil {
 		log.Info("index stopping...")
 		a.index.Stop()
 		a.index = nil
 		log.Info("index stopped")
 	}
+
+	a.discardLongPollClients()
 
 	if a.server != nil {
 		log.Info("API server stopping...")
