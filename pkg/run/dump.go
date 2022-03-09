@@ -24,6 +24,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
@@ -67,12 +68,23 @@ func (d *Dump) Run() error {
 		}
 		defer f.Close()
 
-		form, err := format.NewFormat(getExtension(d.File))
+		_, typ, comp := format.SplitNameTypeCompressor(d.File)
+
+		rd, err := format.NewCartReader(ioutil.NopCloser(bufio.NewReader(f)), comp)
 		if err != nil {
 			return err
 		}
 
-		cart, err := form.Read(bufio.NewReader(f), false, false, nil)
+		if typ == "" {
+			typ = rd.Type()
+		}
+
+		form, err := format.NewFormat(typ)
+		if err != nil {
+			return err
+		}
+
+		cart, err := form.Read(rd, false, false, nil)
 		if err != nil {
 			return err
 		}

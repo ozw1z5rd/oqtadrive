@@ -34,7 +34,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/xelalexv/oqtadrive/pkg/daemon"
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
 	"github.com/xelalexv/oqtadrive/pkg/repo"
 )
 
@@ -206,15 +205,6 @@ func getDrive(w http.ResponseWriter, req *http.Request) int {
 		return -1
 	}
 	return drive
-}
-
-//
-func getFormat(w http.ResponseWriter, req *http.Request) format.ReaderWriter {
-	ret, err := format.NewFormat(getArg(req, "type"))
-	if handleError(err, http.StatusUnprocessableEntity, w) {
-		return nil
-	}
-	return ret
 }
 
 //

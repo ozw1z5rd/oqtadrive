@@ -37,14 +37,18 @@ function setupSearch() {
 
     var button = document.getElementById('btSearch');
     button.onclick = function() {
-        search(keyword.value);
+        if (isURL(keyword.value)) {
+            searchItemSelected(keyword.value);
+        } else {
+            search(keyword.value);
+        }
     };
 }
 
 //
 function search(term) {
 
-    if (term.length < 2) {
+    if (term.length < 2 || isURL(term)) {
         return;
     }
 
@@ -59,6 +63,11 @@ function search(term) {
     ).catch(
         err => console.log('error: ' + err)
     );
+}
+
+//
+function isURL(term) {
+    return term.startsWith('http://') || term.startsWith('https://')
 }
 
 //
@@ -92,7 +101,11 @@ function searchItemSelected(item) {
         "Confirm & click the load button of the drive into which you want to load.",
         function(confirmed) {
             if (confirmed) {
-                selectedSearchItem = "repo://" + item;
+                if (isURL(item)) {
+                    selectedSearchItem = item;
+                } else {
+                    selectedSearchItem = "repo://" + item;
+                }
                 showTab('drives');
             } else {
                 selectedSearchItem = "";
@@ -108,7 +121,8 @@ function loadSelectedSearchItem(drive) {
     }
 
     indicateLoading(drive);
-    upload(drive, getName(selectedSearchItem), getFormat(selectedSearchItem),
+    var fc = getFormatCompressor(selectedSearchItem);
+    upload(drive, getName(selectedSearchItem), fc.format, fc.compressor,
         selectedSearchItem, true);
     selectedSearchItem = "";
 

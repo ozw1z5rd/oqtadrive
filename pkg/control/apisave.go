@@ -24,6 +24,8 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+
+	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
 )
 
 //
@@ -49,8 +51,8 @@ func (a *api) save(w http.ResponseWriter, req *http.Request) {
 
 	defer cart.Unlock()
 
-	writer := getFormat(w, req)
-	if writer == nil {
+	writer, err := format.NewFormat(getArg(req, "type"))
+	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
 	}
 

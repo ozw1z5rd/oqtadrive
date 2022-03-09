@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
 	"github.com/xelalexv/oqtadrive/pkg/repo"
 )
 
@@ -37,31 +38,39 @@ func (a *api) load(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var in io.Reader
+	var in io.ReadCloser
 
 	if ref, err := getRef(req); ref != "" {
-		var rc io.ReadCloser
 		if err == nil {
-			rc, err = repo.Resolve(ref, a.repository)
+			in, err = repo.Resolve(ref, a.repository)
 		}
 		if err != nil {
 			handleError(err, http.StatusNotAcceptable, w)
 			return
 		}
-		in = rc
-		defer rc.Close()
-
 	} else {
-		in = io.LimitReader(req.Body, 1048576)
+		in = http.MaxBytesReader(nil, req.Body, 1048576) // FIXME make constant
 	}
 
-	reader := getFormat(w, req)
-	if reader == nil {
+	cr, err := format.NewCartReader(in, getArg(req, "compressor"))
+	if err != nil {
+		handleError(err, http.StatusUnprocessableEntity, w)
+		return
+	}
+	defer cr.Close()
+
+	typ := getArg(req, "type")
+	if typ == "" {
+		typ = cr.Type()
+	}
+
+	reader, err := format.NewFormat(typ)
+	if handleError(err, http.StatusUnprocessableEntity, w) {
 		return
 	}
 
 	params := map[string]interface{}{"name": getArg(req, "name")}
-	cart, err := reader.Read(in, true, isFlagSet(req, "repair"), params)
+	cart, err := reader.Read(cr, true, isFlagSet(req, "repair"), params)
 	if err != nil {
 		handleError(fmt.Errorf("cartridge corrupted: %v", err),
 			http.StatusUnprocessableEntity, w)

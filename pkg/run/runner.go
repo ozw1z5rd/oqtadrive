@@ -25,8 +25,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"path/filepath"
-	"strings"
 
 	"github.com/xelalexv/oqtadrive/pkg/daemon"
 )
@@ -114,9 +112,4 @@ func validateDrive(d int) error {
 			d, daemon.DriveCount)
 	}
 	return nil
-}
-
-//
-func getExtension(file string) string {
-	return strings.TrimPrefix(filepath.Ext(file), ".")
 }

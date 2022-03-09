@@ -25,6 +25,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
 )
 
 //
@@ -77,9 +79,12 @@ func (s *Save) Run() error {
 		}
 	}
 
+	_, typ, comp := format.SplitNameTypeCompressor(s.File)
+	if comp != "" {
+		return fmt.Errorf("compressed cartridge saving not supported")
+	}
 	resp, err := s.apiCall("GET",
-		fmt.Sprintf("/drive/%d?type=%s", s.Drive, getExtension(s.File)),
-		false, nil)
+		fmt.Sprintf("/drive/%d?type=%s", s.Drive, typ), false, nil)
 	if err != nil {
 		return err
 	}

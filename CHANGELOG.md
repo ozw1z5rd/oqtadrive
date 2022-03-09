@@ -1,5 +1,17 @@
 # Change Log
 
+## `master` (not yet released)
+
+### Overall
+- doc updates, troubleshooting guide
+- changed *autoreset* script used by installer to *Python 3*
+- pegged *arduino:avr* core version installed by installer to `1.8.3`
+
+### Daemon / `oqtactl`
+- support for loading by reference with `http` and `https`
+- support for loading compressed cartridges (*zip*, *gzip*, *7z*)
+- fixed bug that could caused daemon to hang during shutdown
+
 ## 0.2.2
 
 This release does not require re-flashing the adapter. There were no changes to the firmware.

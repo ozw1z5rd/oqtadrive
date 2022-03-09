@@ -34,7 +34,7 @@ var statusIcons = {
 
 //
 function getStatusIcon(s) {
-	return statusIcons[s];
+    return statusIcons[s];
 }
 
 //
@@ -63,17 +63,61 @@ async function subscribe() {
 }
 
 //
+function getFormatCompressor(file) {
+    var compressor = getCompressor(file);
+    if (compressor != '') {
+        file = removeExtension(file);
+    }
+    var format = getFormat(file);
+    return {
+        "format": format,
+        "compressor": compressor
+    };
+}
+
+//
 function getFormat(file) {
+    var ext = getExtension(file);
+    switch (ext) {
+        case 'mdv':
+        case 'mdr':
+        case 'z80':
+            return ext;
+    }
+    return '';
+}
+
+//
+function getCompressor(file) {
+    var ext = getExtension(file);
+    switch (ext) {
+        case 'gz':
+        case 'gzip':
+        case 'zip':
+        case '7z':
+            return ext;
+    }
+    return '';
+}
+
+//
+function getExtension(file) {
     var lastDot = file.lastIndexOf('.');
-    return file.substring(lastDot + 1);
+    return file.substring(lastDot + 1).toLowerCase();
+}
+
+//
+function removeExtension(file) {
+    var lastDot = file.lastIndexOf('.');
+    return file.substring(0, lastDot);
 }
 
 //
 function getName(path) {
     var lastSlash = path.lastIndexOf('/');
     var name = path.substring(lastSlash + 1);
-    var lastDot = name.lastIndexOf('.');
-    return name.substring(0, lastDot);
+    var firstDot = name.indexOf('.');
+    return name.substring(0, firstDot);
 }
 
 //

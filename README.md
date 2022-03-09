@@ -169,13 +169,16 @@ The daemon also serves an HTTP control API on port `8888` (can be changed with `
 
 **Hint**: If loading a cartridge fails due to cartridge corruption (usually caused by incorrect check sums), try the `--repair`/`-r` option. With this, *OqtaDrive* will try to repair the cartridge.
 
+#### Compressed Cartridges
+You can load *zip*, *gzip*, and *7z* compressed cartridge files. The archive format needs to be conveyed by the file extension. Note that if an archive contains more than one file, the first one is picked (whatever *first* may mean in the particular archive format). Also, password protected archives are not supported.
+
 #### Load by Reference
 In addition to uploading a cartridge file to the daemon in order to load it into a virtual drive, it is also possible to just send a *reference* to it. Simply provide this reference instead of the path to the cartridge file. The daemon will then retrieve it accordingly. The type of reference is indicated by a *schema prefix*, and determines how the cartridge will be fetched:
 
 | reference schema | notes                                                    |
 |------------------|----------------------------------------------------------|
 | `repo://`  | The cartridge is located in the daemon's *cartridge repository*. The remainder of the reference is the path to the cartridge, relative to the repo root folder. Check the [repo guide](doc/repo.md) to find out how to set up your repo. |
-| `http://` or `https://` | ( *Not yet implemented!* ) This type of reference is a URL to a cartridge file. The daemon will retrieve it from this location. Note that the daemon needs to have Internet access for this to work. |
+| `http://` or `https://` | This type of reference is a URL to a cartridge file. The daemon will retrieve it from this location. Note that the daemon needs to have Internet access for this to work. |
 
 ### Web UI
 When the `ui` folder containing the web UI assets was deployed on the daemon host alongside the `oqtactl` binary, the daemon will serve the web UI on `http://{daemon host}:8888/` (port can be changed with `--address` option).

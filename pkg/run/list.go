@@ -69,12 +69,23 @@ func (l *List) Run() error {
 		}
 		defer f.Close()
 
-		form, err := format.NewFormat(getExtension(l.File))
+		_, typ, comp := format.SplitNameTypeCompressor(l.File)
+
+		rd, err := format.NewCartReader(ioutil.NopCloser(bufio.NewReader(f)), comp)
 		if err != nil {
 			return err
 		}
 
-		cart, err := form.Read(bufio.NewReader(f), true, false, nil)
+		if typ == "" {
+			typ = rd.Type()
+		}
+
+		form, err := format.NewFormat(typ)
+		if err != nil {
+			return err
+		}
+
+		cart, err := form.Read(rd, false, false, nil)
 		if err != nil {
 			return err
 		}

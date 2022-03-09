@@ -41,14 +41,14 @@ type Writer interface {
 		params map[string]interface{}) error
 }
 
-// ReaderWriter interface for reading/writing a cartridge
-type ReaderWriter interface {
+// ReadWriter interface for reading/writing a cartridge
+type ReadWriter interface {
 	Reader
 	Writer
 }
 
 //
-func NewFormat(typ string) (ReaderWriter, error) {
+func NewFormat(typ string) (ReadWriter, error) {
 
 	switch strings.ToLower(typ) {
 

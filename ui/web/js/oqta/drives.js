@@ -36,7 +36,7 @@ function buildList(drives) {
         fc.className = 'custom-file-input';
         fc.id = 'fc' + i;
         fc.type = 'file';
-        fc.accept = '.mdr,.MDR,.mdv,.MDV,.z80,.Z80';
+        fc.accept = '.mdr,.MDR,.mdv,.MDV,.z80,.Z80,.zip,.ZIP,.gz,.GZ,.gzip,.GZIP,.7z,.7Z';
         fc.style = 'display:none;';
         fc.onclick = function() {
             this.value = null;
@@ -45,7 +45,8 @@ function buildList(drives) {
             var name = this.files[0].name;
             var drive = this.id.substring(2);
             indicateLoading(drive);
-            upload(drive, getName(name), getFormat(name), this.files[0], false);
+            var fc = getFormatCompressor(name);
+            upload(drive, getName(name), fc.format, fc.compressor, this.files[0], false);
         };
         row.appendChild(fc);
 
@@ -133,10 +134,11 @@ function indicateLoading(drive) {
 }
 
 //
-function upload(drive, name, format, data, isRef) {
+function upload(drive, name, format, compressor, data, isRef) {
 
-    var path = '/drive/' + drive + '?type=' + format + '&repair=true&name='
-        + encodeURIComponent(name);
+    var path = '/drive/' + drive + '?type=' + format
+        + '&compressor=' + compressor
+        + '&repair=true&name=' + encodeURIComponent(name);
 
     if (isRef) {
         path += "&ref=true"

@@ -27,9 +27,9 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 
+	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
 	"github.com/xelalexv/oqtadrive/pkg/repo"
 )
 
@@ -38,7 +38,7 @@ func NewLoad() *Load {
 
 	l := &Load{}
 	l.Runner = *NewRunner(
-		`load [-d|--drive {drive}] -i|--input {file} [-f|--force] [-r|--repair]
+		`load [-d|--drive {drive}] -i|--input {file|reference} [-f|--force] [-r|--repair]
        [-a|--address {address}] [-n|--name {cartridge name}]`,
 		"load cartridge into daemon",
 		"\nUse the load command to load a cartridge into the daemon.",
@@ -50,7 +50,9 @@ func NewLoad() *Load {
 `+runnerHelpEpilogue, l.Run)
 
 	l.AddBaseSettings()
-	l.AddSetting(&l.File, "input", "i", "", nil, "cartridge input file", true)
+	l.AddSetting(&l.File, "input", "i", "", nil,
+		`cartridge input file or a reference of type 'repo://...',
+'http://...' or 'https://...'`, true)
 	l.AddSetting(&l.Drive, "drive", "d", "", 1, "drive number (1-8)", false)
 	l.AddSetting(&l.Force, "force", "f", "", false,
 		"force replacing modified cartridge in daemon", false)
@@ -83,14 +85,16 @@ func (l *Load) Run() error {
 		return err
 	}
 
-	var name = l.Name
-	if name == "" {
-		_, name = filepath.Split(l.File)
-		name = strings.TrimSuffix(strings.ToUpper(name), ".Z80")
-	}
+	name, typ, comp := format.SplitNameTypeCompressor(l.File)
 
-	path := fmt.Sprintf("/drive/%d?type=%s&force=%v&repair=%v&name=%s",
-		l.Drive, getExtension(l.File), l.Force, l.Repair, url.QueryEscape(name))
+	if l.Name != "" {
+		name = l.Name
+	}
+	name = strings.ToUpper(name)
+
+	path := fmt.Sprintf(
+		"/drive/%d?type=%s&compressor=%s&force=%v&repair=%v&name=%s",
+		l.Drive, typ, comp, l.Force, l.Repair, url.QueryEscape(name))
 
 	var in io.Reader
 	isRepo, _, err := repo.ParseReference(l.File)
