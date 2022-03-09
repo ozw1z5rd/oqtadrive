@@ -33,7 +33,7 @@ Here's a short [demo video](https://www.babbletower.net/forums/spectrum/microdri
 If you want to build *OqtaDrive* yourself, please carefully read the hardware section below! It contains important instructions & notes. Not following these may break your vintage machine and/or the *Nano*! However, bear in mind that all the information in this project is published in good faith and for general information purpose only. I do not make any warranties about the completeness, reliability, and accuracy of this information. Any action you take upon the information you find here, is strictly at your own risk. I will not be liable for any losses and/or damages in connection with the use of *OqtaDrive*. 
 
 ## Status
-*OqtaDrive* is currently in *alpha* stage, and under active development. Things may still get reworked quite considerably, which may introduce breaking changes.
+*OqtaDrive* is currently in *alpha* stage, and under active development. Things may still get reworked quite considerably, which may introduce breaking changes. If you find something not working as expected, check out the [troubleshooting guide](doc/trobuleshoot.md). You can also start a thread in the discussion section of this project to get some help form the community, or open an issue.
 
 ### Caveats & Current Limitations
 
