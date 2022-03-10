@@ -1,6 +1,6 @@
 # Change Log
 
-## `master` (not yet released)
+## 0.2.3
 
 ### Overall
 - doc updates, troubleshooting guide
