@@ -446,12 +446,13 @@ func zxLayout(pos int) int {
 }
 
 // check compression to ensure it can be decompressed within Spectrum memory
-func decompressf(comp []byte, compSize int) int {
+func decompressf(comp []byte, compSize, mainSize int) int {
 
 	var a byte
 
-	deltaC := 42240 - compSize
+	deltaC := mainSize - compSize
 	deltaN := 0
+	maxDelta := 0
 	c := 0
 	j := 0
 
@@ -481,12 +482,11 @@ func decompressf(comp []byte, compSize int) int {
 			deltaC++
 			deltaN += c
 			hl++
-			if deltaC < deltaN {
-				// caught up so delta not large enough, return gap
-				return deltaN - deltaC
+			if d := deltaN - deltaC; d > maxDelta {
+				maxDelta = d
 			}
 		}
 	}
 
-	return 0
+	return maxDelta
 }

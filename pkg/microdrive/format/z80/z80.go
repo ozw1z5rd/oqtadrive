@@ -40,10 +40,9 @@ import (
 type snapshot struct {
 	//
 	compressed bool
-	otek       bool
 	version    int
 	main       []byte
-	launcher   []byte
+	launcher   launcher
 	code       []byte
 	bank       []int
 	bankEnd    byte
@@ -62,10 +61,16 @@ func (s *snapshot) setName(n string) {
 
 // reads Z80 snapshot and converts it into a cartridge on the fly
 //
-func LoadZ80(in io.Reader, name string) (base.Cartridge, error) {
+func LoadZ80(in io.Reader, name, launcher string) (base.Cartridge, error) {
 
 	start := time.Now()
-	snap := &snapshot{}
+
+	l, err := newLauncher(launcher)
+	if err != nil {
+		return nil, err
+	}
+	snap := &snapshot{launcher: l}
+
 	if err := snap.unpack(in); err != nil {
 		return nil, fmt.Errorf("error unpacking Z80 snapshot: %v", err)
 	}

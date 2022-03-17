@@ -31,6 +31,7 @@ import (
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/if1"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/raw"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 // MDR is a reader/writer for MDR format
@@ -45,7 +46,7 @@ func NewMDR() *MDR {
 
 //
 func (m *MDR) Read(in io.Reader, strict, repair bool,
-	params map[string]interface{}) (base.Cartridge, error) {
+	p util.Params) (base.Cartridge, error) {
 
 	cart := if1.NewCartridge()
 	r := 0
@@ -141,8 +142,7 @@ func (m *MDR) Read(in io.Reader, strict, repair bool,
 }
 
 //
-func (m *MDR) Write(cart base.Cartridge, out io.Writer,
-	params map[string]interface{}) error {
+func (m *MDR) Write(cart base.Cartridge, out io.Writer, p util.Params) error {
 
 	cart.SeekToStart()
 

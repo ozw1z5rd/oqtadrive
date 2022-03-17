@@ -26,19 +26,18 @@ import (
 	"strings"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 // Reader interface for reading in a cartridge
 type Reader interface {
 	// when setting strict, invalid sectors are discarded
-	Read(in io.Reader, strict, repair bool,
-		params map[string]interface{}) (base.Cartridge, error)
+	Read(in io.Reader, strict, repair bool, p util.Params) (base.Cartridge, error)
 }
 
 // Writer interface for writing out a cartridge
 type Writer interface {
-	Write(cart base.Cartridge, out io.Writer,
-		params map[string]interface{}) error
+	Write(cart base.Cartridge, out io.Writer, p util.Params) error
 }
 
 // ReadWriter interface for reading/writing a cartridge

@@ -28,6 +28,7 @@ import (
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
 	"github.com/xelalexv/oqtadrive/pkg/repo"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 //
@@ -69,7 +70,10 @@ func (a *api) load(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	params := map[string]interface{}{"name": getArg(req, "name")}
+	params := util.Params{
+		"name":     getArg(req, "name"),
+		"launcher": getArg(req, "launcher"),
+	}
 	cart, err := reader.Read(cr, true, isFlagSet(req, "repair"), params)
 	if err != nil {
 		handleError(fmt.Errorf("cartridge corrupted: %v", err),

@@ -25,6 +25,7 @@ import (
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/format/z80"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 // Z80 is a format for loading Z80 snapshots. It is an asymmetrical format in
@@ -38,18 +39,12 @@ func NewZ80() *Z80 {
 
 //
 func (z *Z80) Read(in io.Reader, strict, repair bool,
-	params map[string]interface{}) (base.Cartridge, error) {
+	p util.Params) (base.Cartridge, error) {
 
-	name := ""
-	if params != nil {
-		if v, ok := params["name"]; ok && v != nil {
-			if n, ok := v.(string); ok {
-				name = n
-			}
-		}
-	}
+	name, _ := p.GetString("name")
+	launcher, _ := p.GetString("launcher")
 
-	cart, err := z80.LoadZ80(in, name)
+	cart, err := z80.LoadZ80(in, name, launcher)
 	if err != nil {
 		return nil, err
 	}
@@ -66,8 +61,6 @@ func (z *Z80) Read(in io.Reader, strict, repair bool,
 }
 
 //
-func (z *Z80) Write(cart base.Cartridge, out io.Writer,
-	params map[string]interface{}) error {
-
-	return NewMDR().Write(cart, out, params)
+func (z *Z80) Write(cart base.Cartridge, out io.Writer, p util.Params) error {
+	return NewMDR().Write(cart, out, p)
 }

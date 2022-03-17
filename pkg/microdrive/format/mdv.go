@@ -30,6 +30,7 @@ import (
 	"github.com/xelalexv/oqtadrive/pkg/microdrive"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/ql"
+	"github.com/xelalexv/oqtadrive/pkg/util"
 )
 
 // Strangely, a sector in an MDV file is longer than what the QL actually writes
@@ -49,7 +50,7 @@ func NewMDV() *MDV {
 }
 
 func (m *MDV) Read(in io.Reader, strict, repair bool,
-	params map[string]interface{}) (base.Cartridge, error) {
+	p util.Params) (base.Cartridge, error) {
 
 	cart := ql.NewCartridge()
 	ix := 0
@@ -132,8 +133,7 @@ func (m *MDV) Read(in io.Reader, strict, repair bool,
 }
 
 //
-func (m *MDV) Write(cart base.Cartridge, out io.Writer,
-	params map[string]interface{}) error {
+func (m *MDV) Write(cart base.Cartridge, out io.Writer, p util.Params) error {
 
 	padding := make([]byte, 256)
 	for ix := range padding {

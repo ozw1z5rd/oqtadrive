@@ -39,10 +39,12 @@ func NewLoad() *Load {
 	l := &Load{}
 	l.Runner = *NewRunner(
 		`load [-d|--drive {drive}] -i|--input {file|reference} [-f|--force] [-r|--repair]
-       [-a|--address {address}] [-n|--name {cartridge name}]`,
+       [-a|--address {address}] [-n|--name {cartridge name}] [-l|--launcher {type}]`,
 		"load cartridge into daemon",
 		"\nUse the load command to load a cartridge into the daemon.",
-		"", `- You can directly load Z80 snapshot files into the daemon.
+		"", `- You can directly load Z80 snapshot files into the daemon. The type of launcher
+  placed onto the created cartridge can be changed with the --launcher setting.
+  'hidden' (default) is a newer launcher that fixes screen corruption problems.
 
 - Repair currently only recalculates checksums and reverts sector order, if needed.
   If the cartridge is really broken, it won't be fixed this way.
@@ -60,6 +62,9 @@ func NewLoad() *Load {
 		"try to repair cartridge if corrupted", false)
 	l.AddSetting(&l.Name, "name", "n", "", "",
 		"name to give to cartridge when loading a Z80 snapshot", false)
+	l.AddSetting(&l.Launcher, "launcher", "l", "", "hidden",
+		`launcher type to use when loading a Z80 snapshot (hidden,
+screen)`, false)
 
 	return l
 }
@@ -69,11 +74,12 @@ type Load struct {
 	//
 	Runner
 	//
-	Drive  int
-	File   string
-	Name   string
-	Force  bool
-	Repair bool
+	Drive    int
+	File     string
+	Name     string
+	Launcher string
+	Force    bool
+	Repair   bool
 }
 
 //
@@ -93,8 +99,8 @@ func (l *Load) Run() error {
 	name = strings.ToUpper(name)
 
 	path := fmt.Sprintf(
-		"/drive/%d?type=%s&compressor=%s&force=%v&repair=%v&name=%s",
-		l.Drive, typ, comp, l.Force, l.Repair, url.QueryEscape(name))
+		"/drive/%d?type=%s&compressor=%s&force=%v&repair=%v&name=%s&launcher=%s",
+		l.Drive, typ, comp, l.Force, l.Repair, url.QueryEscape(name), l.Launcher)
 
 	var in io.Reader
 	isRepo, _, err := repo.ParseReference(l.File)

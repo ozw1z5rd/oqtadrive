@@ -73,7 +73,7 @@ func (s *snapshot) pack() error {
 	var pg6 *part
 	var pg7 *part
 
-	if s.otek {
+	if s.launcher.isOtek() {
 
 		lenData := 16384 + 512 + len(unpack)
 
@@ -168,21 +168,31 @@ func (s *snapshot) pack() error {
 	go func() {
 		defer wg.Done()
 		main.data = make([]byte, 42240+1320)
+
+		// The new launcher modifies main, so we need to give it its own copy to
+		// ensure we don't disturb the packing of the other parts above, which
+		// can happen in parallel on multi-core systems.
+		mainCp := make([]byte, len(s.main))
+		copy(mainCp, s.main)
+
 		delta := 3
+		dgap := 0
 
 		for {
+			s.launcher.byteSeriesScan(mainCp, delta, dgap)
 			//delta++
 			// up to the full size - delta
-			main.length = zxsc(s.main[6912:], main.data, 42240-delta, false, "M")
-			i := decompressf(main.data, main.length)
-			delta += i
+			main.length = zxsc(mainCp[s.launcher.startPos():], main.data,
+				s.launcher.mainSize()-delta, false, "M")
+			dgap = decompressf(main.data, main.length, s.launcher.mainSize())
+			delta += dgap
 			if delta > BGap {
 				main.err = fmt.Errorf(
 					"cannot compress main block, delta too large: %d > %d",
 					delta, BGap)
 				return
 			}
-			if i < 1 {
+			if dgap < 1 {
 				break
 			}
 		}
@@ -204,18 +214,12 @@ func (s *snapshot) pack() error {
 
 		//launcher
 		launch.length = 65536 - main.length // start of compression
-		s.launcher[ixLCS] = byte(delta)     //adjust last copy for delta
-		s.launcher[ixCP] = byte(launch.length)
-		s.launcher[ixCP+1] = byte(launch.length >> 8)
-		for i := 0; i < delta; i++ {
-			//copy end delta*bytes to launcher
-			s.launcher[launchMDRFullLen+i] = s.main[49152-delta+i]
-		}
+		s.launcher.set(ixCP, byte(launch.length))
+		s.launcher.set(ixCP+1, byte(launch.length>>8))
 
-		launch.length = launchMDRFullLen + delta
-		launch.start = 16384
+		s.launcher.flush(mainCp, launch, delta)
+
 		launch.file = fmt.Sprintf("%-10s", "L")
-		launch.data = s.launcher
 		launch.param = 0xffff
 		launch.dataType = 0x03
 		log.Debugf("launcher file: %d", launch.length)
