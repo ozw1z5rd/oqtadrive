@@ -26,12 +26,20 @@
 
 package z80
 
+/*
+	port history (tags & SHA1, in reverse order):
+		- v1.41		9acb7f3eec4d54b08f2444cd0c6d0f1e73ed7d9e
+		- v1.40		88b6bc26ccd267051d4af161db2110c5412eee95
+		- v1.22		fde4f0d2b5dbc66f00445f56303311debc43cb4e
+		- (others, not tracked)
+*/
+
 const Version = "v1"
 const BGap = 128
 const MaxLength = 256
 const MinLength = 3
 
-// --- 48k loader -------------------------------------------------------------
+// --- 48k BASIC loader -------------------------------------------------------
 const ix48kBrd = 16
 const ix48kPap = 22
 const ix48kUsr = 94
@@ -46,7 +54,7 @@ var mdrBl48k = []byte{
 	0xf9, 0xc0, 0x30, 0x0e, 0x00, 0x00, 0x00, 0x40, 0x00, 0x0d, //(88)
 }
 
-// --- 128k loader ------------------------------------------------------------
+// --- 128k BASIC loader ------------------------------------------------------
 const ix128kBrd = 16
 const ix128kPap = 22
 const ix128kUsr = 142
@@ -67,7 +75,7 @@ var mdrBl128k = []byte{
 	0x79, 0xfb, 0xc9, 0x0d, //(184)
 }
 
-// --- launcher ---------------------------------------------------------------
+// --- old screen based launcher ----------------------------------------------
 const ixRD = 2 // rdata default 0x4072 for 16384, so +114
 const ixCP = 5 // compression pos
 const ixCS = 8
@@ -116,7 +124,7 @@ var launchMDRFull = []byte{
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 }
 
-// --- 3 stage launcher, 1-printer buffer part --------------------------------
+// --- 3 stage launcher, 1-printer buffer -------------------------------------
 const nocLaunchPrtCP = 5  // compression pos
 const nocLaunchPrtJP = 20 // where to jump to
 
@@ -128,45 +136,66 @@ var nocLaunchPrt = []byte{
 	0x00, 0x00, 0x00, 0x00, //(63)
 }
 
-// --- 3 stage launcher, 2-gap part -------------------------------------------
-const nocLaunchIgpBDATA = 1  // bdata start, pos+16
-const nocLaunchIgpLCS = 4    // last copy size=delta=3
-const nocLaunchIgpJP = 14    // jump into stack-67
-const nocLaunchIgpBEGIN = 16 // start of bdata
-const nocLaunchIgpLen = 86   // this is also the restore number
+// --- 3 stage launcher, 2-gap ------------------------------------------------
+const nocLaunchIgpBDATA = 1 // bdata start, pos+16
+const nocLaunchIgpLCS = 4   // last copy size=delta=3
+const nocLaunchIgpOUT = 17  // last out to 0x7ffd 0x30 is bank off
+const nocLaunchIgpBCA = 22
+const nocLaunchIgpDEA = 25
+const nocLaunchIgpHLA = 28
+const nocLaunchIgpIX = 33
+const nocLaunchIgpIY = 37
+const nocLaunchIgpDE = 40
+const nocLaunchIgpCLR = 44   // amount to clear 121
+const nocLaunchIgpCHR = 43   // char to clear
+const nocLaunchIgpRD = 46    // stack rdata  (stack-8)
+const nocLaunchIgpJP = 49    // jump into stack-32
+const nocLaunchIgpBEGIN = 51 // start of bdata
+const nocLaunchIgpLen = 121  // this is also the restore number 51+67+3 (delta)
 
 var nocLaunchIgp = []byte{
-	0x21, 0x3f, 0x5b, 0x0e, 0x03, 0xed, 0xb0, 0x16, 0x5b, 0x0e, 0x43, 0xed, 0xb0, 0xc3, 0x0e, 0x5c, //(0)
+	0x21, 0x3f, 0x5b, //(0) bdata [1]
+	0x0e, 0x03, //(3) lcs [4]
+	0xed, 0xb0, 0x16, 0x5b, 0x0e, 0x43, 0xed, 0xb0, //(5)
+	0x01, 0xfd, 0x7f, 0x3e, 0x30, //(13) ld a,0x30 [17]
+	0xed, 0x79, 0xd9, 0x01, 0x00, 0x00, //(18) bc' [22]
+	0x11, 0x00, 0x00, //(24) de' [25]
+	0x21, 0x00, 0x00, //(27) hl' [28]
+	0xd9, 0xdd, 0x21, 0x00, 0x00, //(30) ix [33]
+	0xfd, 0x21, 0x00, 0x00, //(35) iy [37]
+	0x11, 0x00, 0x00, //(39) de [40]
+	0x01, 0x00, 0x00, //(42) clr [44],chr [43]
+	0x31, 0x8e, 0x5b, //(45) rd [46]
+	0xc3, 0x76, 0x5b, //(48) jp [49]
 }
 
-// --- 3 stage launcher, 3-stack part -----------------------------------------
-const nocLaunchStkCLR = 1  // amount to clear 87
-const nocLaunchStkCHR = 4  // char to clear
-const nocLaunchStkOUT = 11 // last out to 0x7ffd 0x30 is bank off
-const nocLaunchStkRD = 15  // stack rdata = stack - 20 or start+47
-const nocLaunchStkR = 36   // r - reduce by 5 instead of 6
-const nocLaunchStkIM = 40  // interrupt
-const nocLaunchStkA = 42
-const nocLaunchStkEI = 43
-const nocLaunchStkJP = 45
-const nocLaunchStkBCA = 47
-const nocLaunchStkDEA = 49
-const nocLaunchStkHLA = 51
-const nocLaunchStkIX = 53
-const nocLaunchStkIY = 55
-const nocLaunchStkAFA = 57
-const nocLaunchStkHL = 59
-const nocLaunchStkDE = 61
-const nocLaunchStkBC = 63
-const nocLaunchStkIF = 65
+// 3 stage launcher - gap adjustments
+//                  rd cc de  iy  ix  exx hl' de' bc' exx out  a  7ffd
+var adjGap = []byte{3, 6, 9, 13, 17, 18, 21, 24, 27, 28, 30, 32, 35}
+
+// --- 3 stage launcher, 3-stack ----------------------------------------------
+const nocLaunchStkBC = 8
+const nocLaunchStkHL = 11
+const nocLaunchStkR = 17  // r - reduce by 4 instead of 6
+const nocLaunchStkIM = 21 // interrupt
+const nocLaunchStkA = 23
+const nocLaunchStkEI = 24
+const nocLaunchStkJP = 26
+const nocLaunchStkAFA = 28
+const nocLaunchStkIF = 30
 
 var nocLaunchStk = []byte{
-	0x06, 0x53, 0x2b, 0x36, 0x00, 0x10, 0xfb, 0x01, 0xfd, 0x7f, 0x3e, 0x30, 0xed, 0x79, 0x31, 0x3d, // (0)
-	0x5c, 0xd9, 0xc1, 0xd1, 0xe1, 0xd9, 0xdd, 0xe1, 0xfd, 0xe1, 0x08, 0xf1, 0x08, 0xe1, 0xd1, 0xc1, // (16)
-	0xf1, 0xed, 0x47, 0x3e, 0x02, 0xed, 0x4f, 0xed, 0x5e, 0x3e, 0x00, 0xf3, 0xc3, 0xb7, 0xd9, 0x00, // (32)
-	0xff, 0x00, 0xff, 0x1a, 0xf8, 0xf1, 0xe3, 0x3a, 0x5c, 0x8a, 0x00, 0x4c, 0x10, 0xcc, 0x43, 0x00, // (48)
-	0x00, 0x00, 0x02, // (64)
-}
+	0x2b, 0x71, 0x10, 0xfc, 0x08, 0xf1, 0x08, //(0)
+	0x01, 0x00, 0x00, //(7) bc [8]
+	0x21, 0x00, 0x00, //(10) hl [11]
+	0xf1, 0xed, 0x47, //(13)
+	0x3e, 0x02, 0xed, 0x4f, //(16) r [17]
+	0xed, 0x5e, //(20) im [21]
+	0x3e, 0x00, //(22) a [23]
+	0xf3,             //(24) ei
+	0xc3, 0xb7, 0xd9, //(25) pc [26]
+	0x00, 0x00, //(28) af'
+	0x00, 0x00} //(30) if
 
 // --- compressed screen loader -----------------------------------------------
 var scrLoad = []byte{

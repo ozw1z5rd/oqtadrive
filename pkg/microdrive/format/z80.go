@@ -21,6 +21,7 @@
 package format
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
@@ -39,12 +40,19 @@ func NewZ80() *Z80 {
 
 //
 func (z *Z80) Read(in io.Reader, strict, repair bool,
-	p util.Params) (base.Cartridge, error) {
+	p util.Params) (cart base.Cartridge, err error) {
+
+	defer func() {
+		if e := recover(); e != nil {
+			cart = nil
+			err = fmt.Errorf("unrecoverable error during snapshot conversion: %v", e)
+		}
+	}()
 
 	name, _ := p.GetString("name")
 	launcher, _ := p.GetString("launcher")
 
-	cart, err := z80.LoadZ80(in, name, launcher)
+	cart, err = z80.LoadZ80(in, name, launcher)
 	if err != nil {
 		return nil, err
 	}

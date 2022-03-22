@@ -54,16 +54,20 @@ func (s *snapshot) pack() error {
 	scr := &part{}
 	wg.Add(1)
 
-	go func() {
-		defer wg.Done()
+	packScreen := func(main []byte) {
 		scr.data = make([]byte, 6912+216+109)
-		scr.length = zxsc(s.main, scr.data[len(scrLoad):], 6912, true, "S")
+		scr.length = zxsc(main, scr.data[len(scrLoad):], 6912, true, "S")
 		scr.length += copy(scr.data, scrLoad) // add m/c
 		scr.file = fmt.Sprintf("%-10s", "S")
 		scr.start = 25088
 		scr.param = 0xffff
 		scr.dataType = 0x03
 		log.Debugf("screen file: %d", scr.length)
+	}
+
+	go func() {
+		defer wg.Done()
+		packScreen(s.main)
 	}()
 
 	// otek pages
@@ -165,22 +169,24 @@ func (s *snapshot) pack() error {
 	launch := &part{}
 	wg.Add(1)
 
+	// The hidden launcher modifies main, so we need to give it its own copy to
+	// ensure we don't disturb the packing of the other parts above, which can
+	// happen in parallel on multi-core systems.
+	mainCp := make([]byte, len(s.main))
+	copy(mainCp, s.main)
+
 	go func() {
 		defer wg.Done()
 		main.data = make([]byte, 42240+1320)
-
-		// The new launcher modifies main, so we need to give it its own copy to
-		// ensure we don't disturb the packing of the other parts above, which
-		// can happen in parallel on multi-core systems.
-		mainCp := make([]byte, len(s.main))
-		copy(mainCp, s.main)
 
 		delta := 3
 		dgap := 0
 
 		for {
-			s.launcher.byteSeriesScan(mainCp, delta, dgap)
-			//delta++
+			main.err = s.launcher.byteSeriesScan(mainCp, delta, dgap)
+			if main.err != nil {
+				return
+			}
 			// up to the full size - delta
 			main.length = zxsc(mainCp[s.launcher.startPos():], main.data,
 				s.launcher.mainSize()-delta, false, "M")
@@ -226,6 +232,13 @@ func (s *snapshot) pack() error {
 	}()
 
 	wg.Wait()
+
+	// if stack is within screen, we need to repack the screen or we're
+	// missing the launcher
+	if 0 < s.launcher.stackPos() && s.launcher.stackPos() <= 23296 {
+		scr = &part{}
+		packScreen(mainCp)
+	}
 
 	parts := []*part{run, scr, pg1, pg3, pg4, pg6, pg7, main, launch}
 

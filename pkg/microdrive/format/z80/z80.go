@@ -39,13 +39,11 @@ import (
 //
 type snapshot struct {
 	//
-	compressed bool
-	version    int
-	main       []byte
-	launcher   launcher
-	code       []byte
-	bank       []int
-	bankEnd    byte
+	version  int
+	main     []byte
+	launcher launcher
+	code     []byte
+	bank     []int
 	//
 	name string
 	cart base.Cartridge

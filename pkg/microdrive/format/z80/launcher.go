@@ -57,16 +57,23 @@ func newLauncher(typ string) (launcher, error) {
 //
 type launcher interface {
 	setup(rd *bufio.Reader) error
-	byteSeriesScan(main []byte, delta, dgap int)
+	byteSeriesScan(main []byte, delta, dgap int) error
 	flush(main []byte, launch *part, delta int)
+	get(ix int) byte
 	set(ix int, b byte)
 	getData() []byte
 	isCompressed() bool
+	hardwareMode() byte
 	isOtek() bool
 	borderColor() byte
 	addLength() int
 	randomize() int
 	startPos() int
+	// stackPos is the absolute stack pointer int the 64k address space;
+	// it corresponds to `noc_launchstk_pos` in the C version, and is
+	// `len(nocLaunchStk)` lower than `stackpos` from the C version
+	stackPos() int
+	adjustStackPos(main []byte) bool
 	mainSize() int
 }
 
@@ -80,11 +87,18 @@ type lScreen struct {
 	otek       bool
 	border     byte
 	addLen     int
+	stkPos     int
+	hwMode     byte
 }
 
 //
 func (s *lScreen) isCompressed() bool {
 	return s.compressed
+}
+
+//
+func (s *lScreen) hardwareMode() byte {
+	return s.hwMode
 }
 
 //
@@ -113,6 +127,11 @@ func (s *lScreen) startPos() int {
 }
 
 //
+func (s *lScreen) stackPos() int {
+	return s.stkPos
+}
+
+//
 func (s *lScreen) mainSize() int {
 	return 42240
 }
@@ -120,6 +139,11 @@ func (s *lScreen) mainSize() int {
 //
 func (s *lScreen) getData() []byte {
 	return s.data
+}
+
+//
+func (s *lScreen) get(ix int) byte {
+	return s.data[ix]
 }
 
 //
@@ -152,6 +176,12 @@ func (s *lScreen) setup(rd *bufio.Reader) error {
 	}); err != nil {
 		return err
 	}
+
+	// pos of stack code
+	if s.stkPos = int(s.data[ixSP+1])*256 + int(s.data[ixSP]); s.stkPos == 0 {
+		s.stkPos = 65536
+	}
+	s.stkPos -= len(nocLaunchStk)
 
 	// r, reduce by 6 so correct on launch
 	if err = adjust(s.data, ixR, -6); err != nil {
@@ -240,17 +270,13 @@ func (s *lScreen) setup(rd *bufio.Reader) error {
 		}
 
 		// 34   1    Hardware mode
-		if c, err = rd.ReadByte(); err != nil {
+		if s.hwMode, err = rd.ReadByte(); err != nil {
 			return err
 		}
-		log.Debugf("h/w mode: %d", c)
 
-		if c == 2 {
-			return fmt.Errorf("SamRAM Z80 snapshots not supported")
-		}
-		if s.addLen == 23 && c > 2 {
+		if s.addLen == 23 && s.hwMode > 2 {
 			s.otek = true // v2 & c>2 then 128k, if v3 then c>3 is 128k
-		} else if c > 3 {
+		} else if s.hwMode > 3 {
 			s.otek = true
 		}
 		log.Debugf("otek: %v", s.otek)
@@ -313,8 +339,31 @@ func (s *lScreen) setup(rd *bufio.Reader) error {
 	return nil
 }
 
+//
+func (s *lScreen) adjustStackPos(main []byte) bool {
+
+	if s.stkPos+len(nocLaunchStk) < 23296 { // stack in screen?
+		log.WithField("stack", s.stkPos).Debug("stack in screen")
+		i := int(s.get(ixJP+1))*256 + int(s.get(ixJP)) - 16384
+		if main[i] == 0x31 { // ld sp,
+			// set-up stack
+			s.stkPos = int(main[i+2])*256 + int(main[i+1])
+			if s.stkPos == 0 {
+				s.stkPos = 65536
+			}
+			s.stkPos -= len(nocLaunchStk) // pos of stack code
+			log.WithField("stack", s.stkPos).Debug("adjusted stack")
+			return true
+		}
+	}
+
+	return false
+}
+
 // does nothing in old launcher
-func (s *lScreen) byteSeriesScan(main []byte, delta, dgap int) {}
+func (s *lScreen) byteSeriesScan(main []byte, delta, dgap int) error {
+	return nil
+}
 
 //
 func (s *lScreen) flush(main []byte, launch *part, delta int) {
@@ -339,9 +388,9 @@ type lHidden struct {
 	igp []byte
 	stk []byte
 	//
-	stkPos int
-	igpPos int
-	vgap   byte
+	igpPos    int
+	vgap      byte
+	pageShift int
 }
 
 //
@@ -367,16 +416,11 @@ func (s *lHidden) setup(rd *bufio.Reader) error {
 	s.stk[nocLaunchStkJP] = s.data[ixJP]
 	s.stk[nocLaunchStkJP+1] = s.data[ixJP+1]
 
-	// pos of stack code
-	s.stkPos = int(s.data[ixSP+1])*256 + int(s.data[ixSP]) - len(nocLaunchStk)
-
-	s.igp[nocLaunchIgpJP] = byte(s.stkPos)
-	s.igp[nocLaunchIgpJP+1] = byte(s.stkPos >> 8) // jump to stack code
-	s.stk[nocLaunchStkRD] = byte(s.stkPos + 47)
-	s.stk[nocLaunchStkRD+1] = byte((s.stkPos + 47) >> 8) // start of stack within stack
+	s.igp[nocLaunchIgpRD] = byte(s.stkPos + nocLaunchStkAFA)
+	s.igp[nocLaunchIgpRD+1] = byte((s.stkPos + nocLaunchStkAFA) >> 8) // start of stack within stack
 
 	s.stk[nocLaunchStkIF+1] = s.data[ixIF+1]
-	s.stk[nocLaunchStkR] = s.data[ixR] - 1 // 5 for 3 stage launcher
+	s.stk[nocLaunchStkR] = s.data[ixR] + 1 // 5 for 3 stage launcher
 
 	if s.hiBitR {
 		s.stk[nocLaunchStkR] |= 128 // r high bit set
@@ -384,67 +428,85 @@ func (s *lHidden) setup(rd *bufio.Reader) error {
 		s.stk[nocLaunchStkR] &= 127 //r high bit reset
 	}
 
-	s.stk[nocLaunchStkDE] = s.data[ixDE]
-	s.stk[nocLaunchStkDE+1] = s.data[ixDE+1]
-	s.stk[nocLaunchStkBCA] = s.data[ixBCA]
-	s.stk[nocLaunchStkBCA+1] = s.data[ixBCA+1]
-	s.stk[nocLaunchStkDEA] = s.data[ixDEA]
-	s.stk[nocLaunchStkDEA+1] = s.data[ixDEA+1]
-	s.stk[nocLaunchStkHLA] = s.data[ixHLA]
-	s.stk[nocLaunchStkHLA+1] = s.data[ixHLA+1]
+	s.igp[nocLaunchIgpDE] = s.data[ixDE]
+	s.igp[nocLaunchIgpDE+1] = s.data[ixDE+1]
+	s.igp[nocLaunchIgpBCA] = s.data[ixBCA]
+	s.igp[nocLaunchIgpBCA+1] = s.data[ixBCA+1]
+	s.igp[nocLaunchIgpDEA] = s.data[ixDEA]
+	s.igp[nocLaunchIgpDEA+1] = s.data[ixDEA+1]
+	s.igp[nocLaunchIgpHLA] = s.data[ixHLA]
+	s.igp[nocLaunchIgpHLA+1] = s.data[ixHLA+1]
 	s.stk[nocLaunchStkAFA+1] = s.data[ixAFA+1]
 	s.stk[nocLaunchStkAFA] = s.data[ixAFA]
-	s.stk[nocLaunchStkIY] = s.data[ixIY]
-	s.stk[nocLaunchStkIY+1] = s.data[ixIY+1]
-	s.stk[nocLaunchStkIX] = s.data[ixIX]
-	s.stk[nocLaunchStkIX+1] = s.data[ixIX+1]
+	s.igp[nocLaunchIgpIY] = s.data[ixIY]
+	s.igp[nocLaunchIgpIY+1] = s.data[ixIY+1]
+	s.igp[nocLaunchIgpIX] = s.data[ixIX]
+	s.igp[nocLaunchIgpIX+1] = s.data[ixIX+1]
 	s.stk[nocLaunchStkEI] = s.data[ixEI]
 	s.stk[nocLaunchStkIM] = s.data[ixIM]
 
 	if s.otek {
-		s.stk[nocLaunchStkOUT] = s.data[ixOUT]
+		s.igp[nocLaunchIgpOUT] = s.data[ixOUT]
 	}
 
 	return nil
 }
 
 //
-func (s *lHidden) byteSeriesScan(main []byte, delta, dgap int) {
+func (s *lHidden) adjustStackPos(main []byte) bool {
+	if s.lScreen.adjustStackPos(main) {
+		// start of stack within stack
+		s.igp[nocLaunchIgpRD] = byte(s.stkPos + nocLaunchStkAFA)
+		s.igp[nocLaunchIgpRD+1] = byte((s.stkPos + nocLaunchStkAFA) >> 8)
+		return true
+	}
+	return false
+}
 
-	size := nocLaunchIgpLen + delta - 3
-	stack := s.stkPos - 16384
+//
+func (s *lHidden) byteSeriesScan(main []byte, delta, dgap int) error {
 
-	log.Debugf("byte series scan: size %d, stack: %d, delta: %d, dgap: %d",
-		size, s.stkPos, delta, dgap)
-
-	if s.igpPos > 0 { // if delta+1 loop then clear area first
-		log.Debugf("clearing area with vgap %d", s.vgap)
-		// -1 as delta just increased by dgap
-		for i := 0; i < size-dgap; i++ {
-			main[s.igpPos+i] = s.vgap
+	if s.pageShift == 0 { // only set up once
+		s.pageShift = 42173 // 49152-6912-67
+		// bits 0-2: RAM page (0-7) to map into memory at 0Xc000
+		if s.igp[nocLaunchIgpOUT]&7 > 0 {
+			s.pageShift -= 16384
 		}
 	}
+
+	size := nocLaunchIgpLen + delta - 3
+	stack := s.stkPos + len(nocLaunchStk) - 16384
+
+	log.WithFields(log.Fields{
+		"size":      size,
+		"stack":     s.stkPos,
+		"delta":     delta,
+		"dgap":      dgap,
+		"pageshift": s.pageShift}).Debug("byte series scan")
+
 	s.igpPos = 0
 
 	// find gap
 	s.vgap = 0x00 // cycle through all bytes
+	maxGap := 0
+	maxPos := 0
+	maxChr := 0
+
 	for {
 		j := 0
-		for i := 0; i < 41984; i++ {
-			ix := i + 6912 + 256
+		for i := 0; i < s.pageShift; i++ { // also include rest of printer buffer
+			ix := i + 6912 + len(nocLaunchPrt)
 			if main[ix] == s.vgap {
 				j++
+				// start of gap > stack, or end of gap < stack - 32, then ok
+				if j > maxGap && ((ix-j) > stack || ix < stack-len(nocLaunchStk)) {
+					maxGap = j
+					maxPos = i + 1
+					maxChr = int(s.vgap)
+				}
 			} else {
 				j = 0
 			}
-			// start of gap > stack then ok, or end of gap < stack - 67 then ok
-			if j >= size && (ix-j > stack || ix < stack-67) {
-				s.igpPos = ix - j // start of storage
-				break
-			}
-		}
-		if s.igpPos > 0 {
-			break
 		}
 		if s.vgap == 0xff {
 			break
@@ -452,61 +514,116 @@ func (s *lHidden) byteSeriesScan(main []byte, delta, dgap int) {
 		s.vgap++
 	}
 
-	if s.igpPos > 0 {
-		log.Debugf("found gap at %d", s.igpPos)
-	} else {
-		log.Debugf("no gap found")
-		// no space so use attr space instead
-		s.igpPos = 6912 - size
-		vgaps := 0 //find best vgap
-		vgapb := 0
-		s.vgap = 0x00
-		for {
-			j := 0
-			for i := s.igpPos; i < 6912; i++ {
-				if main[i] == s.vgap {
-					j++
-				}
+	adjust := 0 // start with no adjustments between ingap and stack
+	if maxGap > size {
+		s.igpPos = maxPos + 6912 + len(nocLaunchPrt) - maxGap // start of in gap
+
+	} else { // cannot find large enough gap so can we adjust the launcher?
+		for _, a := range adjGap {
+			if maxGap > size-int(a) {
+				adjust = int(a)
 			}
-			if j >= vgapb {
-				vgapb = j
-				vgaps = int(s.vgap)
-			}
-			if s.vgap == 0xff {
+			if adjust != 0 {
 				break
 			}
-			s.vgap++
 		}
-		s.vgap = byte(vgaps)
-		log.Debugf("using attr space with igpPos at %d", s.igpPos)
+
+		if adjust == 0 { // if cannot adjust and not gap big enough then use screen attr
+			s.igpPos = 6912 - size
+			vgaps := 0
+			vgapb := 0
+			for maxChr = 0; maxChr <= 0xff; maxChr++ { //find most common attr
+				j := 0
+				for i := s.igpPos; i < 6912; i++ {
+					if main[i] == byte(maxChr) {
+						j++
+					}
+				}
+				if j >= vgapb {
+					vgapb = j
+					vgaps = maxChr
+				}
+			}
+			maxChr = vgaps
+			// FIXME
+			log.Debugf("vgaps: %d, vgapb: %d, maxchar: %d", vgaps, vgapb, maxChr)
+		} else { // can adjust to get gap to fit pos
+			s.igpPos = maxPos + 6912 + len(nocLaunchPrt) - maxGap // adjust
+		}
 	}
 
-	log.Debugf("byte scan done")
+	// is pc in the way?
+	pc := int(s.stk[nocLaunchStkJP+1])*256 + int(s.stk[nocLaunchStkJP])
+	stShift := 0
+	if s.stkPos-adjust <= pc && s.stkPos+len(nocLaunchStk) > pc {
+		stShift = s.stkPos + len(nocLaunchStk) - pc // stack - pc
+		if stShift <= 4 {
+			return fmt.Errorf("program counter clashes with launcher")
+		}
+		// shift equivalent of 32 bytes below where is was (4 bytes still
+		// remain under the stack)
+		stShift = 28
+	}
+
+	log.WithFields(log.Fields{
+		"adjust":  adjust,
+		"igppos":  s.igpPos,
+		"stshift": stShift}).Debug("byte scan done")
 
 	start := s.igpPos + 16384
 	s.prt[nocLaunchPrtJP] = byte(start)
 	s.prt[nocLaunchPrtJP+1] = byte(start >> 8) // jump into gap
 
-	start = s.igpPos + nocLaunchIgpBEGIN + 16384
+	start = s.igpPos + nocLaunchIgpBEGIN + 16384 - adjust
 	s.igp[nocLaunchIgpBDATA] = byte(start)
 	s.igp[nocLaunchIgpBDATA+1] = byte(start >> 8) // bdata start
 	s.igp[nocLaunchIgpLCS] = byte(delta)
 
-	s.stk[nocLaunchStkCLR] = byte(size)
-	s.stk[nocLaunchStkCHR] = s.vgap // set the erase char in stack code
+	s.igp[nocLaunchIgpCLR] = byte(size - adjust) // size of ingap clear
+	s.igp[nocLaunchIgpCHR] = byte(maxChr)        // set the erase char in stack code
+	start = s.stkPos - adjust - stShift
+	s.igp[nocLaunchIgpJP] = byte(start)
+	s.igp[nocLaunchIgpJP+1] = byte(start >> 8) // jump to stack code - adjust - shift
 
-	// copy stack routine under stack
-	copy(main[s.stkPos-16384:], s.stk[:len(nocLaunchStk)])
+	// copy stack routine under stack, split version if shift
+	if stShift > 0 {
+		copy(main[s.stkPos-16384-stShift:], s.stk[:len(nocLaunchStk)-4])
+		// final 4 bytes just below new code
+		for i := 0; i < 4; i++ {
+			main[s.stkPos+len(nocLaunchStk)-16384+i-4] = s.stk[len(nocLaunchStk)-4+i]
+		}
+	} else {
+		if s.stkPos < 16384 {
+			return fmt.Errorf(
+				"corrupted snapshot data - stack too low: %d", s.stkPos)
+		}
+		copy(main[s.stkPos-16384:], s.stk[:len(nocLaunchStk)]) // standard copy
+	}
+
+	//reduce ingap code and add to stack routine
+	if adjust > 0 {
+		for i := 0; i < adjust; i++ {
+			main[s.stkPos-16384+i-adjust-stShift] = s.igp[nocLaunchIgpBEGIN-adjust-3+i]
+		}
+	}
+	// if ingap not in screen attr, this is done after so as to not effect
+	// the screen compression
 
 	if s.igpPos > 6912 {
 		// copy prtbuf to screen
-		copy(main[s.igpPos+nocLaunchIgpBEGIN+delta:],
+		copy(main[s.igpPos+nocLaunchIgpBEGIN+delta-adjust:],
 			main[6912:6912+len(nocLaunchPrt)])
 		// copy delta to screen
-		copy(main[s.igpPos+nocLaunchIgpBEGIN:], main[49152-delta:49152])
+		copy(main[s.igpPos+nocLaunchIgpBEGIN-adjust:], main[49152-delta:49152])
 		// copy in compression routine into screen
-		copy(main[s.igpPos:], s.igp[:nocLaunchIgpBEGIN])
+		copy(main[s.igpPos:], s.igp[:nocLaunchIgpBEGIN-adjust-3])
+		// last jp
+		for i := 0; i < 3; i++ {
+			main[s.igpPos+nocLaunchIgpBEGIN-adjust-3+i] = s.igp[nocLaunchIgpBEGIN-3+i]
+		}
 	}
+
+	return nil
 }
 
 //
@@ -552,4 +669,78 @@ func (s *lHidden) startPos() int {
 //
 func (s *lHidden) mainSize() int {
 	return s.lScreen.mainSize() - 256
+}
+
+//
+func validateHardwareMode(mode byte, version int) error {
+
+	hw := ""
+	supported := true
+
+	switch mode {
+
+	case 0:
+		hw = "48k"
+	case 1:
+		hw = "48k + If.1"
+	case 2:
+		hw = "SamRam"
+		supported = false
+	case 3:
+		if version == 2 {
+			hw = "128k"
+		} else {
+			hw = "48k + M.G.T."
+		}
+	case 4:
+		if version == 2 {
+			hw = "128k + If.1"
+		} else {
+			hw = "128k"
+		}
+	case 5:
+		if version == 3 {
+			hw = "128k + If.1"
+		}
+	case 6:
+		if version == 3 {
+			hw = "128k + M.G.T."
+		}
+	case 7:
+		hw = "Spectrum +3"
+	case 8:
+		hw = "Spectrum +3 (incorrect)"
+	case 9:
+		hw = "Pentagon (128K)"
+	case 10:
+		hw = "Scorpion (256K)"
+		supported = false
+	case 11:
+		hw = "Didaktik-Kompakt"
+		supported = false
+	case 12:
+		hw = "Spectrum +2"
+	case 13:
+		hw = "Spectrum +2A"
+	case 14:
+		hw = "TC2048"
+		supported = false
+	case 15:
+		hw = "TC2068"
+		supported = false
+	case 128:
+		hw = "TS2068"
+		supported = false
+	}
+
+	if hw == "" {
+		return fmt.Errorf("invalid h/w mode: %d", mode)
+	}
+
+	if !supported {
+		return fmt.Errorf("unsupported h/w mode: %s (%d)", hw, mode)
+	}
+
+	log.Debugf("h/w mode: %s (%d)", hw, mode)
+	return nil
 }

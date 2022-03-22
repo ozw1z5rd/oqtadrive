@@ -71,9 +71,11 @@ func (s *snapshot) unpack(in io.Reader) error {
 	if s.launcher.addLength() == 0 { // version 1 snapshot & 48k only
 		log.Debug("snapshot version: v1")
 		s.version = 1
-		if s.compressed {
+		if s.launcher.isCompressed() {
+			log.Debug("decompressing snapshot")
 			err = decompressZ80(rd, s.main)
 		} else {
+			log.Debug("reading snapshot")
 			_, err = io.ReadFull(rd, s.main)
 		}
 		if err != nil {
@@ -104,6 +106,7 @@ func (s *snapshot) unpack(in io.Reader) error {
 		//    0 ROM, 1 ROM, 3 Page 0....10 page 7, 11 MF ROM.
 		// all pages are saved and there is no end marker
 		//
+		var bankEnd int
 		if s.launcher.isOtek() {
 			s.bank[3] = 32768   // page 0
 			s.bank[4] = 49152   // page 1
@@ -113,16 +116,16 @@ func (s *snapshot) unpack(in io.Reader) error {
 			s.bank[8] = 0       // page 5
 			s.bank[9] = 98304   // page 6
 			s.bank[10] = 114688 // page 7
-			s.bankEnd = 10
+			bankEnd = 8
 		} else {
 			s.bank[4] = 16384 // page 2
 			s.bank[5] = 32768 // page 0
 			s.bank[8] = 0     // page 5
-			s.bankEnd = 8
+			bankEnd = 3
 		}
 
 		var c byte
-		for c = 0; c != s.bankEnd; {
+		for ; bankEnd > 0; bankEnd-- {
 			if length, err = readUInt16(rd); err != nil {
 				return err
 			}
@@ -149,6 +152,12 @@ func (s *snapshot) unpack(in io.Reader) error {
 			}
 		}
 	}
+
+	if err := validateHardwareMode(s.launcher.hardwareMode(), s.version); err != nil {
+		return err
+	}
+
+	s.launcher.adjustStackPos(s.main)
 
 	rand := s.launcher.randomize()
 
