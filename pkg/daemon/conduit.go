@@ -22,8 +22,10 @@ package daemon
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/jacobsa/go-serial/serial"
@@ -275,6 +277,11 @@ func (c *conduit) receiveBlock() ([]byte, error) {
 	log.Tracef("stop shift: %d", shift)
 
 	if int(shift) > len(stop)-1 {
+		if log.IsLevelEnabled(log.DebugLevel) {
+			d := hex.Dumper(os.Stdout)
+			defer d.Close()
+			d.Write(raw)
+		}
 		return nil, fmt.Errorf(
 			"corrupted block, excessive stop shift '%d'", shift)
 	} else if shift > 0 {
@@ -327,7 +334,7 @@ func (c *conduit) remainingBytes(raw []byte) int {
 	if c.client == client.QL {
 		// QL
 		// raw byte | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10| 11| 12| 13|
-		//          --------------------------------------------------------
+		//          ---------------------------------------------------------
 		//   DATA1: |l0 |h0 |l2 |h2 |l4 |h4 |l6 |h6 |l8 |h8 |l10|h10|l12|h12| high
 		//   DATA2: |   |l1 |h1 |l3 |h3 |l5 |h5 |l7 |h7 |l9 |h9 |l11|h11|   | low
 		//
@@ -341,16 +348,26 @@ func (c *conduit) remainingBytes(raw []byte) int {
 
 		ret := c.recordLengthMux - c.headerLengthMux // standard record
 
+		//	When formatting, the QL writes records that are longer than standard
+		//	records, to test as much of the space on tape as possible. To make
+		//	sure we're really dealing with a format record, we first check on
+		//	the flag and file number bytes. During a format, these would be `fd`
+		//	(which reversed is `bf`) and `00`, respectively.
+		num := ((raw[headerFlagIndex+1] & 0x0f) << 4) | (raw[headerFlagIndex+2] & 0x0f)
+		if flag != 0xbf || num != 0 {
+			return ret
+		}
+
 		// pos 24  hex:  5f  5a  5a  5a  5a                '_ZZZZ'
 		flag = (raw[24] & 0xf0) | ((raw[25] & 0xf0) >> 4)
-		num := ((raw[25] & 0x0f) << 4) | (raw[26] & 0x0f)
+		num = ((raw[25] & 0x0f) << 4) | (raw[26] & 0x0f)
 		chL := (raw[26] & 0xf0) | ((raw[27] & 0xf0) >> 4)
 		chH := ((raw[27] & 0x0f) << 4) | (raw[28] & 0x0f)
 
 		if flag == 0x55 && num == 0xaa && chL == 0x55 && chH == 0xaa {
 			// 0xAA55 in both flag+num and the two byte checksum of a record
-			// header signify a record written during format, which is longer
-			// than a standard record.
+			// header further assure us that we're seeing a record written
+			// during format.
 			ret += ql.FormatExtraBytes
 		}
 		return ret
