@@ -360,12 +360,21 @@ void detectInterface(bool if1, bool ql) {
 	} else {
 		// Idle level of COMMS_CLK is HIGH for Interface 1, LOW for QL.
 		// Sample COMMS_CLK line for two seconds to find out.
+
+		// avoid floating input during detect
+		pinMode(PIN_COMMS_CLK, INPUT_PULLUP);
+
 		uint8_t high = 0, low = 0;
 		for (uint8_t i = 0; i < 21; i++) {
 			(PIND & MASK_COMMS_CLK) == 0 ? low++ : high++;
 			delay(100);
 		}
 		IF1 = high > low;
+
+		// restore to input without pull-up; whenever detecInterface is called,
+		// COMMS_CLK input is configured that way; should that ever change, we
+		// need to get current state above and then restore here
+		pinMode(PIN_COMMS_CLK, INPUT);
 	}
 
 	if (IF1) {
