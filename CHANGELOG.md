@@ -1,6 +1,18 @@
 # Change Log
 
+## 0.2.4
+This release requires re-flashing the adapter. Protocol version remains at `3`.
+
+### Adapter
+- switched to using pull-up on `COMMS_CLK` input during interface detection, to improve reliability of detection
+- further reduced wait time for block end during recording (issue 17)
+
+### Daemon / `oqtactl`
+- ported new 'hidden' launcher from *Z80onMDR_Lite*; this new launcher gets rid of screen artifacts when loading *Z80* snapshots; also ported support for *SNA* snapshots; now in sync with *Z80onMDR_Lite* V1.51
+- fixed an issue that could lead to loss of sync with adapter when *QL* is erasing a sector
+
 ## 0.2.3
+This release does not require re-flashing the adapter. There were no changes to the firmware.
 
 ### Overall
 - doc updates, troubleshooting guide
@@ -13,7 +25,6 @@
 - fixed bug that could caused daemon to hang during shutdown
 
 ## 0.2.2
-
 This release does not require re-flashing the adapter. There were no changes to the firmware.
 
 ### Overall
