@@ -198,6 +198,8 @@ func SplitNameTypeCompressor(file string) (name, typ, compressor string) {
 		case "mdv":
 			fallthrough
 		case "z80":
+			fallthrough
+		case "sna":
 			typ = ext
 
 		case "gz":

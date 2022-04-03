@@ -39,7 +39,7 @@ func (s *snapshot) unpack(in io.Reader) error {
 
 	rd := bufio.NewReader(in)
 
-	if err := s.launcher.setup(rd); err != nil {
+	if err := s.launcher.setup(rd, s.sna); err != nil {
 		return err
 	}
 
@@ -71,7 +71,7 @@ func (s *snapshot) unpack(in io.Reader) error {
 	if s.launcher.addLength() == 0 { // version 1 snapshot & 48k only
 		log.Debug("snapshot version: v1")
 		s.version = 1
-		if s.launcher.isCompressed() {
+		if !s.sna && s.launcher.isCompressed() {
 			log.Debug("decompressing snapshot")
 			err = decompressZ80(rd, s.main)
 		} else {
@@ -157,7 +157,7 @@ func (s *snapshot) unpack(in io.Reader) error {
 		return err
 	}
 
-	s.launcher.adjustStackPos(s.main)
+	s.launcher.adjustStackPos(s.main, s.sna)
 
 	rand := s.launcher.randomize()
 

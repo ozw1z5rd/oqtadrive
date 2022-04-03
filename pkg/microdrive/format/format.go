@@ -58,7 +58,10 @@ func NewFormat(typ string) (ReadWriter, error) {
 		return NewMDV(), nil
 
 	case "z80":
-		return NewZ80(), nil
+		return NewZ80(false), nil
+
+	case "sna":
+		return NewZ80(true), nil
 
 	default:
 		return nil, fmt.Errorf("unsupported cartridge format: %s", typ)

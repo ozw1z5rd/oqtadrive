@@ -39,6 +39,7 @@ import (
 //
 type snapshot struct {
 	//
+	sna      bool
 	version  int
 	main     []byte
 	launcher launcher
@@ -59,7 +60,7 @@ func (s *snapshot) setName(n string) {
 
 // reads Z80 snapshot and converts it into a cartridge on the fly
 //
-func LoadZ80(in io.Reader, name, launcher string) (base.Cartridge, error) {
+func LoadZ80(in io.Reader, name, launcher string, sna bool) (base.Cartridge, error) {
 
 	start := time.Now()
 
@@ -67,21 +68,26 @@ func LoadZ80(in io.Reader, name, launcher string) (base.Cartridge, error) {
 	if err != nil {
 		return nil, err
 	}
-	snap := &snapshot{launcher: l}
+
+	snap := &snapshot{launcher: l, sna: sna}
+	label := "Z80"
+	if sna {
+		label = "SNA"
+	}
 
 	if err := snap.unpack(in); err != nil {
-		return nil, fmt.Errorf("error unpacking Z80 snapshot: %v", err)
+		return nil, fmt.Errorf("error unpacking %s snapshot: %v", label, err)
 	}
 
 	end := time.Now()
-	log.WithField("duration", end.Sub(start)).Debug("unpacked Z80 snapshot")
+	log.WithField("duration", end.Sub(start)).Debugf("unpacked %s snapshot", label)
 
 	snap.setName(name)
 
 	start = end
 	if err := snap.pack(); err != nil {
 		return nil, fmt.Errorf(
-			"error storing Z80 snapshot into cartridge: %v", err)
+			"error storing %s snapshot into cartridge: %v", label, err)
 	}
 
 	end = time.Now()

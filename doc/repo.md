@@ -1,6 +1,6 @@
 # Cartridge Repository
 
-You can store your collection of cartridges and `Z80` snapshots in a so-called *repo* on the daemon host. This is essentially just a designated folder where you place them. When set up, you can load files from this repo with `repo://{path}` references, where `{path}` is the path to the desired file, relative to the repo folder. A search index for the files in the repo is maintained automatically (see below), so searching through a collection with even thousands of files is quick.
+You can store your collection of cartridges and `Z80`/`SNA` snapshots in a so-called *repo* on the daemon host. This is essentially just a designated folder where you place them. When set up, you can load files from this repo with `repo://{path}` references, where `{path}` is the path to the desired file, relative to the repo folder. A search index for the files in the repo is maintained automatically (see below), so searching through a collection with even thousands of files is quick.
 
 ## Setup
 

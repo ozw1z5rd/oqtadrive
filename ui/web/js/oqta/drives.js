@@ -36,7 +36,7 @@ function buildList(drives) {
         fc.className = 'custom-file-input';
         fc.id = 'fc' + i;
         fc.type = 'file';
-        fc.accept = '.mdr,.MDR,.mdv,.MDV,.z80,.Z80,.zip,.ZIP,.gz,.GZ,.gzip,.GZIP,.7z,.7Z';
+        fc.accept = '.mdr,.MDR,.mdv,.MDV,.z80,.Z80,.sna,.SNA,.zip,.ZIP,.gz,.GZ,.gzip,.GZIP,.7z,.7Z';
         fc.style = 'display:none;';
         fc.onclick = function() {
             this.value = null;

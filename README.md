@@ -20,7 +20,7 @@ Due to the minimal hardware required, *OqtaDrive* is also very cost-efficient. I
 - Daemon can run on *Linux*, *MacOS*, and *Windows* (more community testing for the latter two needed!)
 - Control daemon via command line interface and web UI
 - Load & save from/to *MDR* and *MDV* formatted cartridge files
-- For *Spectrum*, *Z80* snapshot files can be directly loaded, no additional software required. Big thanks to Tom Dalby for open-sourcing [Z80onMDR Lite](https://github.com/TomDDG/Z80onMDR_lite)!
+- For *Spectrum*, *Z80* and *SNA* snapshot files can be directly loaded, no additional software required. Big thanks to Tom Dalby for open-sourcing [Z80onMDR Lite](https://github.com/TomDDG/Z80onMDR_lite)!
 - Store your cartridge collection on the daemon host and [search & load](doc/repo.md) from any client
 - Connect a *rumble motor* for authentic sound ;-)
 - List virtual drives & contents of cartridges
@@ -165,7 +165,7 @@ The daemon also serves an HTTP control API on port `8888` (can be changed with `
 - list drives: `oqtactl ls`
 - list cartridge content: `oqtactl ls -d {drive}` or `oqtactl ls -i {file}`
 
-`load` & `save` currently support `.mdr` and `.mdv` formatted files. I've only tested loading a very limited number of cartridge files available out there though, so there may be surprises. For the *Spectrum* `load` can also load *Z80* snapshot files into the daemon, converting them to *MDR* on the fly.
+`load` & `save` currently support `.mdr` and `.mdv` formatted files. I've only tested loading a very limited number of cartridge files available out there though, so there may be surprises. For the *Spectrum* `load` can also load *Z80* and *SNA* snapshot files into the daemon, converting them to *MDR* on the fly.
 
 **Hint**: If loading a cartridge fails due to cartridge corruption (usually caused by incorrect check sums), try the `--repair`/`-r` option. With this, *OqtaDrive* will try to repair the cartridge.
 

@@ -82,6 +82,7 @@ function getFormat(file) {
         case 'mdv':
         case 'mdr':
         case 'z80':
+        case 'sna':
             return ext;
     }
     return '';

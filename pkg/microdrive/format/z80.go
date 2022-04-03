@@ -30,12 +30,16 @@ import (
 )
 
 // Z80 is a format for loading Z80 snapshots. It is an asymmetrical format in
-// the sense that it reads Z80 snapshots, but writes MDRs.
-type Z80 struct{}
+// the sense that it reads Z80 snapshots, but writes MDRs. The SNA format is,
+// while being a format on its own, essentially an uncompressed V1 Z80 snapshot.
+// It is therefore handled by Z80.
+type Z80 struct {
+	sna bool
+}
 
 //
-func NewZ80() *Z80 {
-	return &Z80{}
+func NewZ80(sna bool) *Z80 {
+	return &Z80{sna}
 }
 
 //
@@ -52,7 +56,7 @@ func (z *Z80) Read(in io.Reader, strict, repair bool,
 	name, _ := p.GetString("name")
 	launcher, _ := p.GetString("launcher")
 
-	cart, err = z80.LoadZ80(in, name, launcher)
+	cart, err = z80.LoadZ80(in, name, launcher, z.sna)
 	if err != nil {
 		return nil, err
 	}

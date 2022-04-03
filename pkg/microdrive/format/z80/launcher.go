@@ -50,13 +50,13 @@ func newLauncher(typ string) (launcher, error) {
 		return nil, fmt.Errorf("unsupported launcher type: '%s'", typ)
 	}
 
-	log.Debugf("using Z80 launcher type '%s'", typ)
+	log.Debugf("using launcher type '%s'", typ)
 	return l, nil
 }
 
 //
 type launcher interface {
-	setup(rd *bufio.Reader) error
+	setup(rd *bufio.Reader, sna bool) error
 	byteSeriesScan(main []byte, delta, dgap int) error
 	flush(main []byte, launch *part, delta int)
 	get(ix int) byte
@@ -73,7 +73,7 @@ type launcher interface {
 	// it corresponds to `noc_launchstk_pos` in the C version, and is
 	// `len(nocLaunchStk)` lower than `stackpos` from the C version
 	stackPos() int
-	adjustStackPos(main []byte) bool
+	adjustStackPos(main []byte, sna bool) bool
 	mainSize() int
 }
 
@@ -152,13 +152,23 @@ func (s *lScreen) set(ix int, b byte) {
 }
 
 //
-func (s *lScreen) setup(rd *bufio.Reader) error {
-
-	var c byte
-	var err error
+func (s *lScreen) setup(rd *bufio.Reader, sna bool) error {
 
 	s.data = make([]byte, len(launchMDRFull))
 	copy(s.data, launchMDRFull)
+
+	if sna {
+		return s.setupSNA(rd)
+	} else {
+		return s.setupZ80(rd)
+	}
+}
+
+//
+func (s *lScreen) setupZ80(rd *bufio.Reader) error {
+
+	var c byte
+	var err error
 
 	if err = fill(rd, s.data, []int{ // read in z80 starting with header
 		ixA,  //      0   1    A register
@@ -340,9 +350,96 @@ func (s *lScreen) setup(rd *bufio.Reader) error {
 }
 
 //
-func (s *lScreen) adjustStackPos(main []byte) bool {
+func (s *lScreen) setupSNA(rd *bufio.Reader) error {
 
-	if s.stkPos+len(nocLaunchStk) < 23296 { // stack in screen?
+	var c byte
+	var err error
+
+	if err = fill(rd, s.data, []int{
+		ixIF + 1, //	$00  I	Interrupt register
+		ixHLA,    //	$01  HL'
+		ixHLA + 1,
+		ixDEA, //		$03  DE'
+		ixDEA + 1,
+		ixBCA, //		$05  BC'
+		ixBCA + 1,
+		ixAFA,     //	$07  F'
+		ixAFA + 1, //	$08  A'
+		ixHL,      //	$09  HL
+		ixHL + 1,
+		ixDE, //		$0B  DE
+		ixDE + 1,
+		ixBC, //		$0D  BC
+		ixBC + 1,
+		ixIY, //		$0F  IY
+		ixIY + 1,
+		ixIX, //		$11  IX
+		ixIX + 1,
+	}); err != nil {
+		return err
+	}
+
+	//	$13  0 for DI otherwise EI
+	if c, err = rd.ReadByte(); err != nil {
+		return err
+	}
+
+	if c == 0 {
+		s.data[ixEI] = 0xf3 //di
+	} else {
+		s.data[ixEI] = 0xfb //ei
+	}
+
+	if err = fill(rd, s.data, []int{
+		ixR,  //	$14  R
+		ixIF, //	$15  F
+		ixA,  //	$16  A
+		ixSP, //	$17  SP
+		ixSP + 1,
+	}); err != nil {
+		return err
+	}
+
+	// pos of stack code
+	if s.stkPos = int(s.data[ixSP+1])*256 + int(s.data[ixSP]) + 2; s.stkPos == 0 {
+		s.stkPos = 65536
+	}
+	s.stkPos -= len(nocLaunchStk)
+
+	// $19  Interrupt mode IM(0, 1 or 2)
+	if c, err = rd.ReadByte(); err != nil {
+		return err
+	}
+	c &= 3
+
+	if c == 0 {
+		s.data[ixIM] = 0x46 //im 0
+	} else if c == 1 {
+		s.data[ixIM] = 0x56 //im 1
+	} else {
+		s.data[ixIM] = 0x5e //im 2
+	}
+
+	//	$1A  Border color
+	if c, err = rd.ReadByte(); err != nil {
+		return err
+	}
+	s.border = (c & 7) + 0x30
+
+	return nil
+}
+
+//
+func (s *lScreen) adjustStackPos(main []byte, sna bool) bool {
+
+	stackpos := s.stkPos + len(nocLaunchStk)
+
+	if sna {
+		s.data[ixJP] = main[stackpos-16384-2]
+		s.data[ixJP+1] = main[stackpos-16384-1]
+	}
+
+	if stackpos < 23296 { // stack in screen?
 		log.WithField("stack", s.stkPos).Debug("stack in screen")
 		i := int(s.get(ixJP+1))*256 + int(s.get(ixJP)) - 16384
 		if main[i] == 0x31 { // ld sp,
@@ -394,9 +491,9 @@ type lHidden struct {
 }
 
 //
-func (s *lHidden) setup(rd *bufio.Reader) error {
+func (s *lHidden) setup(rd *bufio.Reader, sna bool) error {
 
-	if err := s.lScreen.setup(rd); err != nil {
+	if err := s.lScreen.setup(rd, sna); err != nil {
 		return err
 	}
 
@@ -406,6 +503,16 @@ func (s *lHidden) setup(rd *bufio.Reader) error {
 	copy(s.igp, nocLaunchIgp)
 	s.stk = make([]byte, len(nocLaunchStk))
 	copy(s.stk, nocLaunchStk)
+
+	if sna {
+		return s.setupSNA()
+	} else {
+		return s.setupZ80()
+	}
+}
+
+//
+func (s *lHidden) setupZ80() error {
 
 	s.stk[nocLaunchStkA] = s.data[ixA]
 	s.stk[nocLaunchStkIF] = s.data[ixIF]
@@ -453,14 +560,58 @@ func (s *lHidden) setup(rd *bufio.Reader) error {
 }
 
 //
-func (s *lHidden) adjustStackPos(main []byte) bool {
-	if s.lScreen.adjustStackPos(main) {
+func (s *lHidden) setupSNA() error {
+
+	s.stk[nocLaunchStkIF+1] = s.data[ixIF+1]
+
+	s.igp[nocLaunchIgpHLA] = s.data[ixHLA]
+	s.igp[nocLaunchIgpHLA+1] = s.data[ixHLA+1]
+	s.igp[nocLaunchIgpDEA] = s.data[ixDEA]
+	s.igp[nocLaunchIgpDEA+1] = s.data[ixDEA+1]
+	s.igp[nocLaunchIgpBCA] = s.data[ixBCA]
+	s.igp[nocLaunchIgpBCA+1] = s.data[ixBCA+1]
+
+	s.stk[nocLaunchStkAFA] = s.data[ixAFA]
+	s.stk[nocLaunchStkAFA+1] = s.data[ixAFA+1]
+	s.stk[nocLaunchStkHL] = s.data[ixHL]
+	s.stk[nocLaunchStkHL+1] = s.data[ixHL+1]
+
+	s.igp[nocLaunchIgpDE] = s.data[ixDE]
+	s.igp[nocLaunchIgpDE+1] = s.data[ixDE+1]
+
+	s.stk[nocLaunchStkBC] = s.data[ixBC]
+	s.stk[nocLaunchStkBC+1] = s.data[ixBC+1]
+
+	s.igp[nocLaunchIgpIY] = s.data[ixIY]
+	s.igp[nocLaunchIgpIY+1] = s.data[ixIY+1]
+	s.igp[nocLaunchIgpIX] = s.data[ixIX]
+	s.igp[nocLaunchIgpIX+1] = s.data[ixIX+1]
+
+	s.stk[nocLaunchStkEI] = s.data[ixEI]
+	s.stk[nocLaunchStkIF] = s.data[ixIF]
+	s.stk[nocLaunchStkA] = s.data[ixA]
+	s.stk[nocLaunchStkIM] = s.data[ixIM]
+
+	return nil
+}
+
+//
+func (s *lHidden) adjustStackPos(main []byte, sna bool) bool {
+
+	adjusted := s.lScreen.adjustStackPos(main, sna)
+
+	if sna {
+		s.stk[nocLaunchStkJP] = s.data[ixJP]
+		s.stk[nocLaunchStkJP+1] = s.data[ixJP+1]
+	}
+
+	if sna || adjusted {
 		// start of stack within stack
 		s.igp[nocLaunchIgpRD] = byte(s.stkPos + nocLaunchStkAFA)
 		s.igp[nocLaunchIgpRD+1] = byte((s.stkPos + nocLaunchStkAFA) >> 8)
-		return true
 	}
-	return false
+
+	return adjusted
 }
 
 //
