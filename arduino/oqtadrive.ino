@@ -35,7 +35,7 @@
 //
 //#include "config/dongle.h"
 //#include "config/spectrum.h"
-//#include "config/if1.h"
+#include "config/if1.h"
 //#include "config/ql.h"
 //#include "config/pi.h"
 
@@ -199,6 +199,7 @@ uint8_t buffer[BUF_LENGTH];
 
 // --- message buffer ---------------------------------------------------------
 uint8_t msgBuffer[4];
+uint16_t waitHist[16];
 
 // --- Microdrive interface type - Interface 1 or QL --------------------------
 bool IF1 = true;
@@ -518,7 +519,7 @@ void setTracksToRecord() {
 /*
 	Tracks in REPLAY mode means the Arduino sends data. I.e. when the
 	Interface 1/QL wants to read from the Microdrive, the two track data pins
-	need to be put into	output mode.
+	need to be put into output mode.
  */
 void setTracksToReplay() {
 	DDRC = MASK_BOTH_TRACKS;
@@ -835,6 +836,10 @@ void shadow() {
 //
 bool shadowBlock(uint16_t toSend) {
 
+/*	for (register uint8_t ix = 0; ix < 16; ix++) {
+		waitHist[ix] = 0;
+	}
+*/
 	uint16_t read = receiveBlock(false, toSend);
 	_delay_us(20.0); // give last byte enough time to be sent over serial
 
@@ -853,12 +858,18 @@ bool shadowBlock(uint16_t toSend) {
 	UDR0 = ret;
 	_delay_us(20.0); // also give byte written here enough time to be sent
 
+/*	for (register uint8_t ix = 3; ix < 16; ix++) {
+		uint16_t h = waitHist[ix];
+		debugMsg('W', lowByte(h), highByte(h));
+		debugFlush();
+	}
+*/
 	return ret == 0;
 }
 
 // FIXME: check for sync loss while here?
 //
-// gap	length of gap to find, in us
+// gap length of gap to find, in us
 // max  max wait time, in us
 //
 bool findGap(uint16_t gap, uint16_t max) {
@@ -872,7 +883,7 @@ bool findGap(uint16_t gap, uint16_t max) {
 
 	for (register uint16_t n = max / pause; n > 0; n--) {
 
-		_delay_us((float)(pause - 5));
+		_delay_us((double)(pause - 5));
 
 		if ((PINC & MASK_BOTH_TRACKS) == MASK_BOTH_TRACKS) {
 			elapsed++;
@@ -922,6 +933,79 @@ void recordCalibrate() {
 }
 
 /*
+	- one tick covers one port read + loop overhead, and is approx. 640ns
+ */
+uint8_t cycleWait(uint8_t wait, uint8_t ticks) {
+
+	// if ticks == 0, then start of block and wait contains default
+	if (ticks > 0 ) {
+		wait = ticks < 2 ? wait - 1 : wait;
+		wait = ticks > 6 ? wait + 1 : wait;
+	}
+
+	wait = wait < 7 ? 7 : wait;
+	wait = wait > 11 ? 11 : wait;
+
+	// we need to do this because _delay_us requires a compile time constant
+	switch (wait) {
+		case 3:
+			//waitHist[3]++;
+			_delay_us(3.0);
+			break;
+		case 4:
+			//waitHist[4]++;
+			_delay_us(4.0);
+			break;
+		case 5:
+			//waitHist[5]++;
+			_delay_us(5.0);
+			break;
+		case 6:
+			//waitHist[6]++;
+			_delay_us(6.0);
+			break;
+		case 7:
+			//waitHist[7]++;
+			_delay_us(7.0);
+			break;
+		case 8:
+			//waitHist[8]++;
+			_delay_us(8.0);
+			break;
+		case 9:
+			//waitHist[9]++;
+			_delay_us(9.0);
+			break;
+		case 10:
+			//waitHist[10]++;
+			_delay_us(10.0);
+			break;
+		case 11:
+			//waitHist[11]++;
+			_delay_us(11.0);
+			break;
+		case 12:
+			//waitHist[12]++;
+			_delay_us(12.0);
+			break;
+		case 13:
+			//waitHist[13]++;
+			_delay_us(13.0);
+			break;
+		case 14:
+			//waitHist[14]++;
+			_delay_us(14.0);
+			break;
+		case 15:
+			//waitHist[15]++;
+			_delay_us(15.0);
+			break;
+	}
+
+	return wait;
+}
+
+/*
 	Receive a block (header or record). Change in drive state is checked only
 	while waiting for the start of the block. Once the block starts, no further
 	checks are done. End of data from Interface 1/QL however is detected.
@@ -951,6 +1035,7 @@ uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 
 	register uint8_t start = PINC & MASK_BOTH_TRACKS, end, bitCount, d, w;
 	register uint16_t read = 0, ww;
+	uint8_t wait = IF1 ? 9 : 7;
 
 	for (ww = 0xffff; ww > 0; ww--) {
 		// sync on first bit change of block, on either track
@@ -1025,7 +1110,8 @@ uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 			start = ~start & MASK_BOTH_TRACKS;
 
 			// wait for approx. 75% of cycle to elapse
-			if (IF1) _delay_us(9.00); else _delay_us(7.00);
+			wait = cycleWait(wait, 0x2f - w);
+			//if (IF1) _delay_us(9.00); else _delay_us(7.00);
 
 			// When a track has changed state compared to start of cycle at this
 			// point, then it carries a 1 in this cycle, otherwise a 0.

@@ -30,9 +30,12 @@ import (
 func (c *command) debug(d *Daemon) error {
 
 	now := time.Now()
-
-	log.Debugf("%c%c %3d  [ %08b ] - %v",
-		c.arg(0), c.arg(1), c.arg(2), c.arg(2), now.Sub(d.debugStart))
+	if c.arg(0) == 'W' {
+		log.Debugf("%c %5d", c.arg(0), int(c.arg(1))+256*int(c.arg(2)))
+	} else {
+		log.Debugf("%c%c %3d  [ %08b ] - %v",
+			c.arg(0), c.arg(1), c.arg(2), c.arg(2), now.Sub(d.debugStart))
+	}
 	d.debugStart = now
 
 	return nil
