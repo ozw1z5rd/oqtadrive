@@ -5,12 +5,12 @@
 ## TL;DR
 *OqtaDrive* emulates a bank of up to 8 *Microdrives* for use with a *Sinclair Spectrum* (with *Interface 1*) or *QL* machine. The goal is to functionally create a *faithful reproduction of the original*. That is, on the *Spectrum*/*QL* side, operating the emulated *Microdrives* should feel exactly the same as using the real thing. So by definition, it does not try to compete with more "modern day" mass storage solutions for *Spectrum* and *QL*.
 
-*OqtaDrive* is built around an *Arduino Nano* that connects via its GPIO ports to the *Microdrive* interface and via serial connection to a daemon running on a host machine. This daemon host could be anything, ranging from your PC to a small embedded board such as a *RaspberryPi Zero*, as long as it can run a supported OS (*Linux*, *MacOS*, *Windows*). The same *Nano* can be used with both *Spectrum* and *QL*, without any reconfiguration.
+*OqtaDrive* is built around an *Arduino Nano* or *Pro Mini*, that connects via its GPIO ports to the *Microdrive* interface and via serial connection to a daemon running on a host machine. This daemon host could be anything, ranging from your PC to a small embedded board such as a *RaspberryPi Zero*, as long as it can run a supported OS (*Linux*, *MacOS*, *Windows*). The same *Arduino* can be used with both *Spectrum* and *QL*, without any reconfiguration.
 
-While the *Nano* is essentially a low-level protocol converter, the daemon takes care of storing and managing the *cartridges*. It additionally exposes an HTTP API endpoint. A few shell commands are provided that use this API and let you control the daemon, e.g. load and save cartridges into/from the virtual drives. A web UI is available as well.
+While the *Arduino* is essentially a low-level protocol converter, the daemon takes care of storing and managing the *cartridges*. It additionally exposes an HTTP API endpoint. A few shell commands are provided that use this API and let you control the daemon, e.g. load and save cartridges into/from the virtual drives. A web UI is available as well.
 
 ## What Can I Do With This?
-*OqtaDrive*'s architecture makes it very flexible, so many setups are possible. The simplest one would be just the *Nano* that connects your *Interface 1* or *QL* with your PC, and you manage everything from there. This configuration also [fits nicely into the case of an *Interface 1*](https://github.com/xelalexv/oqtadrive/discussions/15). If you're rather looking for a stand-alone solution, you could for example run the daemon on a *RaspberryPi Zero W*, [put it on a PCB together with the *Nano*](https://tomdalby.com/other/oqtadrive.html), and place this into a *Microdrive* or 3D printed case. The *Pi* would connect to your WiFi and you can control *OqtaDrive* from anywhere in your network.
+*OqtaDrive*'s architecture makes it very flexible, so many setups are possible. The simplest one would be just the *Arduino* that connects your *Interface 1* or *QL* with your PC, and you manage everything from there. This configuration also [fits nicely into the case of an *Interface 1*](https://github.com/xelalexv/oqtadrive/discussions/15). If you're rather looking for a stand-alone solution, you could for example run the daemon on a *RaspberryPi Zero W*, [put it on a PCB together with the *Arduino*](https://tomdalby.com/other/oqtadrive.html), and place this into a *Microdrive* or 3D printed case. The *Pi* would connect to your WiFi and you can control *OqtaDrive* from anywhere in your network.
 
 Due to the minimal hardware required, *OqtaDrive* is also very cost-efficient. In the simplest setup, you only need an *Arduino Nano* and a few resistors and diodes. Additionally, if you own a *Spectrum* and a *QL*, you can use it with both, no need to have dedicated adapters. But above all, there's the fun involved in building this! If you've created your very own setup, then just head over to the discussion section and tell us about it!
 
@@ -30,7 +30,7 @@ Due to the minimal hardware required, *OqtaDrive* is also very cost-efficient. I
 Here's a short [demo video](https://www.babbletower.net/forums/spectrum/microdrive/oqtadrive-demo.mp4) showing *OqtaDrive* & a *Spectrum* in action, doing a *Microdrive* test with the original *Sinclair* demo cartridge image, and a cartridge format.
 
 ## Warning & Disclaimer
-If you want to build *OqtaDrive* yourself, please carefully read the hardware section below! It contains important instructions & notes. Not following these may break your vintage machine and/or the *Nano*! However, bear in mind that all the information in this project is published in good faith and for general information purpose only. I do not make any warranties about the completeness, reliability, and accuracy of this information. Any action you take upon the information you find here, is strictly at your own risk. I will not be liable for any losses and/or damages in connection with the use of *OqtaDrive*. 
+If you want to build *OqtaDrive* yourself, please carefully read the hardware section below! It contains important instructions & notes. Not following these may break your vintage machine and/or the *Arduino*! However, bear in mind that all the information in this project is published in good faith and for general information purpose only. I do not make any warranties about the completeness, reliability, and accuracy of this information. Any action you take upon the information you find here, is strictly at your own risk. I will not be liable for any losses and/or damages in connection with the use of *OqtaDrive*. 
 
 ## Status
 *OqtaDrive* is currently in *alpha* stage, and under active development. Things may still get reworked quite considerably, which may introduce breaking changes. If you find something not working as expected, check out the [troubleshooting guide](doc/troubleshoot.md). You can also start a thread in the discussion section of this project to get some help form the community, or open an issue.
@@ -46,7 +46,7 @@ If you want to build *OqtaDrive* yourself, please carefully read the hardware se
 ### Circuit
 ![OqtaDrive](doc/schematic.png)
 
-The circuit is straightforward. You only need to connect a few of the *Nano*'s GPIO pins to an edge connector plug, program `arduino/oqtadrive.ino` onto the board, and you're all set. Here are a few things to consider though, when building the adapter:
+The circuit is straightforward. You only need to connect a few of the *Arduino*'s GPIO pins to an edge connector plug, program `arduino/oqtadrive.ino` onto the board, and you're all set. Here are a few things to consider though, when building the adapter:
 
 - The notch in the edge connector counts as pins 3A/3B.
 
@@ -54,15 +54,15 @@ The circuit is straightforward. You only need to connect a few of the *Nano*'s G
 
 - The resistors in the data lines (`DATA1` & `DATA2`) and `WR.PROTECT` are not strictly required, the original *Microdrives* don't have them. I still recommend using them, since they will limit the current that can flow should there ever be a conflict between these outputs and the *Interface 1*, *QL*, or other *Microdrives*.
 
-- The switching diodes (1N4148 or similar) in the `WR.PROTECT` and `/ERASE` lines are strictly required when using the adapter together with actual *Microdrives*. It protects the according GPIOs `D6` and `D5` on the *Nano* from over-voltage coming from the drives, and prevents `D5` from activating the erase head in an actual *Microdrive* unit when it is running.
+- The switching diodes (1N4148 or similar) in the `WR.PROTECT` and `/ERASE` lines are strictly required when using the adapter together with actual *Microdrives*. It protects the according GPIOs `D6` and `D5` on the *Arduino* from over-voltage coming from the drives, and prevents `D5` from activating the erase head in an actual *Microdrive* unit when it is running.
 
 - `COMMS_OUT` is only used when you want to daisy chain actual *Microdrives* behind the *OqtaDrive* adapter, instead of having the adapter at the end of the chain (see below for more details). `D7` needs to be connected to `COMMS_IN` of the first hardware drive in this case. By doing this, you can freely move the hardware drives as a group to wherever you need them in the chain, or turn them off completely.
 
-- Connecting the 9V to `Vin` on the *Nano* is while not strictly required, still recommended. Without this, the *Nano* is only powered when connected to USB. If it's disconnected and the *Spectrum* or *QL* is powered on, current will be injected into the *Nano* via its GPIO pins. This may be outside the spec of the micro-controller on the *Nano*. So to be on the safe side, connect it, but don't skip the diode in that case! Any 1A diode such as a 1N4002 will do.
+- Connecting the 9V to `Vin` on the *Arduino* is while not strictly required, still recommended. Without this, the *Arduino* is only powered when connected to USB. If it's disconnected and the *Spectrum* or *QL* is powered on, current will be injected into the *Arduino* via its GPIO pins. This may be outside the spec of the micro-controller on the *Arduino*. So to be on the safe side, connect it, but don't skip the diode in that case! Any 1A diode such as a 1N4002 will do.
 
 - You may also connect two LEDs for indicating read & write activity to pins `D12` and `D11`, respectively (don't forget resistors). By default, the LEDs are on during idle and start blinking during activity. If you want them to be off during idle, set `LED_RW_IDLE_ON` to `false` in `oqtadrive.ino`.
 
-- In addition to the LEDs, you can also connect a small vibration motor, such as an *Adafruit 1201* to `D10`, to get a nice mechanical sound whenever a drive is active. Adds to the atmosphere ;-) However, you need a transistor to drive the motor, it's not advisable to connect it directly (see for example [here](http://learningaboutelectronics.com/Articles/Vibration-motor-circuit.php)) **Important**: Do not use the 3.3V output for the supply voltage! On the *Nano*, this is rated at only 30mA! Pin `D10` is operated in *PWM* mode, to control the vibration level. With setting `RUMBLE_LEVEL` in `oqtadrive.ino` you can choose the default level after power on, and with `oqtactl config --rumble`, change this when the adapter is running.
+- In addition to the LEDs, you can also connect a small vibration motor, such as an *Adafruit 1201* to `D10`, to get a nice mechanical sound whenever a drive is active. Adds to the atmosphere ;-) However, you need a transistor to drive the motor, it's not advisable to connect it directly (see for example [here](http://learningaboutelectronics.com/Articles/Vibration-motor-circuit.php)) **Important**: Do not use the 3.3V output for the supply voltage! On the *Arduino Nano* for example, this is rated at only 30mA! Pin `D10` is operated in *PWM* mode, to control the vibration level. With setting `RUMBLE_LEVEL` in `oqtadrive.ino` you can choose the default level after power on, and with `oqtactl config --rumble`, change this when the adapter is running.
 
 - When designing a case for the adapter that should work with *Spectrum* and *QL*, keep in mind that on the *QL*, the edge connector is on the right hand side of the unit, while it is on the left for the *Interface 1*.
 
@@ -126,12 +126,12 @@ Cons:
 
 
 ### Using a Different *Arduino* Board
-I haven't tried this out on anything other than a *Nano* (or compatible) board. It may work on other *Arduino* boards, but only if they use the same micro-controller running at the same clock speed. There are timing-sensitive sections in the code that would otherwise require tweaking. Also, stick to the GPIO pin assignments, the code relies on this.
+So far I have built *OqtaDrives* with *Arduino Nano* and *Arduino Pro Mini* boards (cheap compatible clones). It may work with other *Arduino* boards, but only if they use the same micro-controller (*ATMega328P*) running at the same clock speed (16MHz). There are timing-sensitive sections in the code that would otherwise require tweaking. Also, stick to the GPIO pin assignments, the code relies on this.
 
 ## Installing
 After building the adapter, the software needs to be installed. This comprises two separate tasks:
 
-- Flashing the firmware onto the *Arduino Nano* - For this you can use for example the [*Arduino* IDE](https://www.arduino.cc/en/software).
+- Flashing the firmware onto the *Arduino* - For this you can use for example the [*Arduino* IDE](https://www.arduino.cc/en/software).
 
 - Copying the `oqtactl` binary - This is a single binary, which takes care of everything that needs to be done on the daemon host side. It can also be used to control the daemon, on the same host or over the network. In the *release* section of this project, there are binaries for *Linux*, *MacOS* and *Windows*, available for different architectures. Download, extract, and copy the appropriate binary onto the daemon host and any other system from which you want to use it. If you want to enable the *OqtaDrive* web UI, you also need to extract the content of the `ui.zip` archive from the *release* section, and place it alongside the `oqtactl` binary on the daemon host.
 

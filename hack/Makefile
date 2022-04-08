@@ -59,15 +59,16 @@ ROOT = $(shell pwd)
 #	${ITL}RESET_PIN${NRM}	reset pin number to uses when adapter is connected via
 #			GPIOs rather than USB; defaults to pin 18
 #
-#	${ITL}OLD_NANO=y${NRM}	set this when the adapter is using a ${ITL}Nano${NRM} board with
-#			old boot loader (sets fqbn accordingly)
+#	${ITL}OLD_NANO=y${NRM}	set this when using a ${ITL}Nano${NRM} board with old boot loader
+#			(sets ${ITL}FQBN${NRM} to ${DIM}arduino:avr:nano:cpu=atmega328old${NRM})
 #
 #	${ITL}SKIP_UI=y${NRM}	set this to skip installing the web UI
 #
 #	${ITL}REPO${NRM}		set to repo folder during install to activate repo
 #
 #	${ITL}FQBN${NRM}		board identifier to use when uploading; defaults to
-#			${DIM}arduino:avr:nano${NRM}
+#			${DIM}arduino:avr:nano${NRM} for the ${ITL}Nano${NRM}; for the ${ITL}Pro Mini${NRM},
+#			use ${DIM}arduino:avr:pro${NRM}
 #
 #	${ITL}BUILD_URL${NRM}	set base URL of an alternative download site to not
 #			download from ${ITL}GitHub${NRM} during install, e.g. for using

@@ -65,7 +65,7 @@ And here's the same with a bit more background information:
 
     The installation of the *Arduino CLI* can take quite a bit, so some patience is required ;-)
 
-- *Optional*: In our *RaspberryPi* setup, the serial connection between *Arduino Nano* and *Pi* is done via GPIO pins, not USB. This requires applying a small patch to the *avrdude* flash program ([details](https://siytek.com/raspberry-pi-gpio-arduino/)). This only has to be run once: 
+- *Optional*: In our *RaspberryPi* setup, the serial connection between *Arduino* and *Pi* is done via GPIO pins, not USB. This requires applying a small patch to the *avrdude* flash program ([details](https://siytek.com/raspberry-pi-gpio-arduino/)). This only has to be run once: 
 
     `make patch_avrdude`
 
