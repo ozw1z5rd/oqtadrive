@@ -932,6 +932,26 @@ void recordCalibrate() {
 	debugFlush();
 }
 
+// step: 0.50:
+//    3: 15, 22, 37, 42, 46
+//    4: 20, 30, 39, 42, 45
+//
+// step: 0.25:
+//    3: 16, 28, 36, 43, 45
+//    4: 19, 29, 37, 45, 46
+//
+//    3:  4,  9, 23, 27, 30
+//		  1, 22, 27, 31, 34
+//       13, 23, 29, 32, 33
+//       10, 20, 25, 28, 29
+//
+// step: 0.15:
+//    3:  2, 13, 17, 44, 46
+//    4:  9, 16, 23, 25, 25
+
+uint8_t dTicks[] = {3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5};
+//uint8_t dTicks = 3;
+
 /*
 	- one tick covers one port read + loop overhead, and is approx. 640ns
  */
@@ -939,67 +959,30 @@ uint8_t cycleWait(uint8_t wait, uint8_t ticks) {
 
 	// if ticks == 0, then start of block and wait contains default
 	if (ticks > 0 ) {
-		wait = ticks < 2 ? wait - 1 : wait;
-		wait = ticks > 6 ? wait + 1 : wait;
+		register uint8_t dt = dTicks[wait];
+		wait = ticks < dt ? wait - 1 : (ticks > dt ? wait + 1 : wait);
 	}
 
-	wait = wait < 7 ? 7 : wait;
-	wait = wait > 11 ? 11 : wait;
+	wait = wait < 1 ? 1 : (wait > 16 ? 16 : wait);
 
 	// we need to do this because _delay_us requires a compile time constant
 	switch (wait) {
-		case 3:
-			//waitHist[3]++;
-			_delay_us(3.0);
-			break;
-		case 4:
-			//waitHist[4]++;
-			_delay_us(4.0);
-			break;
-		case 5:
-			//waitHist[5]++;
-			_delay_us(5.0);
-			break;
-		case 6:
-			//waitHist[6]++;
-			_delay_us(6.0);
-			break;
-		case 7:
-			//waitHist[7]++;
-			_delay_us(7.0);
-			break;
-		case 8:
-			//waitHist[8]++;
-			_delay_us(8.0);
-			break;
-		case 9:
-			//waitHist[9]++;
-			_delay_us(9.0);
-			break;
-		case 10:
-			//waitHist[10]++;
-			_delay_us(10.0);
-			break;
-		case 11:
-			//waitHist[11]++;
-			_delay_us(11.0);
-			break;
-		case 12:
-			//waitHist[12]++;
-			_delay_us(12.0);
-			break;
-		case 13:
-			//waitHist[13]++;
-			_delay_us(13.0);
-			break;
-		case 14:
-			//waitHist[14]++;
-			_delay_us(14.0);
-			break;
-		case 15:
-			//waitHist[15]++;
-			_delay_us(15.0);
-			break;
+		case  1: _delay_us(5.50); break;
+		case  2: _delay_us(6.00); break;
+		case  3: _delay_us(6.50); break;
+		case  4: _delay_us(7.00); break;
+		case  5: _delay_us(7.50); break;
+		case  6: _delay_us(8.00); break;
+		case  7: _delay_us(8.50); break;
+		case  8: _delay_us(9.00); break;
+		case  9: _delay_us(9.50); break;
+		case 10: _delay_us(10.00); break;
+		case 11: _delay_us(10.50); break;
+		case 12: _delay_us(11.00); break;
+		case 13: _delay_us(11.50); break;
+		case 14: _delay_us(12.00); break;
+		case 15: _delay_us(12.50); break;
+		case 16: _delay_us(13.00); break;
 	}
 
 	return wait;
@@ -1035,7 +1018,7 @@ uint16_t receiveBlock(bool variable, uint16_t maxSend) {
 
 	register uint8_t start = PINC & MASK_BOTH_TRACKS, end, bitCount, d, w;
 	register uint16_t read = 0, ww;
-	uint8_t wait = IF1 ? 9 : 7;
+	uint8_t wait = IF1 ? 8 : 1; // FIXME QL
 
 	for (ww = 0xffff; ww > 0; ww--) {
 		// sync on first bit change of block, on either track

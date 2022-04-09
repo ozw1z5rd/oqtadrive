@@ -36,7 +36,7 @@ const runnerHelpEpilogue = `- When a flag can be set via environment variable, t
   when specified overrides an environment variable.
 
 - Boolean flags without a parameter mean 'true'. To unset, specify the flag with
-  a parameter 'false', e.g. '--foo=false' or '-f=false' (not the equal sign).
+  a parameter 'false', e.g. '--foo=false' or '-f=false' (note the equal sign).
 `
 
 /*
