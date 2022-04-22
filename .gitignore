@@ -12,3 +12,4 @@ scratchpad
 .cache
 cartridges
 repo
+!pkg/repo
