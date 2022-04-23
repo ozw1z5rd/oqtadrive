@@ -56,7 +56,8 @@ func newLauncher(typ string) (launcher, error) {
 
 //
 type launcher interface {
-	setup(rd *bufio.Reader, sna bool) error
+	setup(rd *bufio.Reader, sna bool, size int) error
+	postSetup(rd *bufio.Reader) error
 	byteSeriesScan(main []byte, delta, dgap int) error
 	flush(main []byte, launch *part, delta int)
 	get(ix int) byte
@@ -152,13 +153,13 @@ func (s *lScreen) set(ix int, b byte) {
 }
 
 //
-func (s *lScreen) setup(rd *bufio.Reader, sna bool) error {
+func (s *lScreen) setup(rd *bufio.Reader, sna bool, size int) error {
 
 	s.data = make([]byte, len(launchMDRFull))
 	copy(s.data, launchMDRFull)
 
 	if sna {
-		return s.setupSNA(rd)
+		return s.setupSNA(rd, size)
 	} else {
 		return s.setupZ80(rd)
 	}
@@ -350,7 +351,13 @@ func (s *lScreen) setupZ80(rd *bufio.Reader) error {
 }
 
 //
-func (s *lScreen) setupSNA(rd *bufio.Reader) error {
+func (s *lScreen) setupSNA(rd *bufio.Reader, size int) error {
+
+	if size < 49179 {
+		return fmt.Errorf("SNA snapshot issue - too small: %d", size)
+	}
+
+	s.otek = size >= 131103 // 128k snapshot
 
 	var c byte
 	var err error
@@ -379,6 +386,14 @@ func (s *lScreen) setupSNA(rd *bufio.Reader) error {
 		return err
 	}
 
+	// check this is a SNA snapshot
+	if (s.data[ixIF+1] == 'M' && s.data[ixHLA] == 'V' &&
+		s.data[ixHLA+1] == ' ' && s.data[ixDEA] == '-') ||
+		(s.data[ixIF+1] == 'Z' && s.data[ixHLA] == 'X' &&
+			s.data[ixHLA+1] == '8' && s.data[ixDEA] == '2') {
+		return fmt.Errorf("not a SNA snapshot")
+	}
+
 	//	$13  0 for DI otherwise EI
 	if c, err = rd.ReadByte(); err != nil {
 		return err
@@ -401,7 +416,11 @@ func (s *lScreen) setupSNA(rd *bufio.Reader) error {
 	}
 
 	// pos of stack code
-	if s.stkPos = int(s.data[ixSP+1])*256 + int(s.data[ixSP]) + 2; s.stkPos == 0 {
+	s.stkPos = int(s.data[ixSP+1])*256 + int(s.data[ixSP])
+	if !s.otek {
+		s.stkPos += 2
+	}
+	if s.stkPos == 0 {
 		s.stkPos = 65536
 	}
 	s.stkPos -= len(nocLaunchStk)
@@ -430,11 +449,31 @@ func (s *lScreen) setupSNA(rd *bufio.Reader) error {
 }
 
 //
+func (s *lScreen) postSetup(rd *bufio.Reader) error {
+	if s.otek {
+		if err := fill(rd, s.data, []int{
+			ixJP, // PC
+			ixJP + 1,
+			ixOUT, // last out to 0x7ffd
+		}); err != nil {
+			return err
+		}
+		// TD-DOS
+		if c, err := rd.ReadByte(); err != nil {
+			return err
+		} else if c != 0 {
+			return fmt.Errorf("SNA snapshot issue")
+		}
+	}
+	return nil
+}
+
+//
 func (s *lScreen) adjustStackPos(main []byte, sna bool) bool {
 
 	stackpos := s.stkPos + len(nocLaunchStk)
 
-	if sna {
+	if sna && !s.otek {
 		s.data[ixJP] = main[stackpos-16384-2]
 		s.data[ixJP+1] = main[stackpos-16384-1]
 	}
@@ -491,9 +530,9 @@ type lHidden struct {
 }
 
 //
-func (s *lHidden) setup(rd *bufio.Reader, sna bool) error {
+func (s *lHidden) setup(rd *bufio.Reader, sna bool, size int) error {
 
-	if err := s.lScreen.setup(rd, sna); err != nil {
+	if err := s.lScreen.setup(rd, sna, size); err != nil {
 		return err
 	}
 
@@ -592,6 +631,21 @@ func (s *lHidden) setupSNA() error {
 	s.stk[nocLaunchStkA] = s.data[ixA]
 	s.stk[nocLaunchStkIM] = s.data[ixIM]
 
+	return nil
+}
+
+//
+func (s *lHidden) postSetup(rd *bufio.Reader) error {
+	if err := s.lScreen.postSetup(rd); err != nil {
+		return err
+	}
+	if s.otek {
+		// PC
+		s.stk[nocLaunchStkJP] = s.data[ixJP]
+		s.stk[nocLaunchStkJP+1] = s.data[ixJP+1]
+		// last out to 0x7ffd
+		s.igp[nocLaunchIgpOUT] = s.data[ixOUT]
+	}
 	return nil
 }
 

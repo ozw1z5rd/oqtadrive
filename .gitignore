@@ -12,4 +12,5 @@ scratchpad
 .cache
 cartridges
 repo
+repogz
 !pkg/repo

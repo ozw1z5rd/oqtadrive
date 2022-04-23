@@ -28,6 +28,7 @@ package z80
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 
@@ -37,9 +38,15 @@ import (
 //
 func (s *snapshot) unpack(in io.Reader) error {
 
-	rd := bufio.NewReader(in)
+	// to determine size, we need to read in all and repack as buffer reader
+	buf, err := io.ReadAll(io.LimitReader(in, 256000))
+	if err != nil {
+		return err
+	}
 
-	if err := s.launcher.setup(rd, s.sna); err != nil {
+	rd := bufio.NewReader(bytes.NewReader(buf))
+
+	if err := s.launcher.setup(rd, s.sna, len(buf)); err != nil {
 		return err
 	}
 
@@ -66,20 +73,127 @@ func (s *snapshot) unpack(in io.Reader) error {
 		s.bank[i] = 99 // default
 	}
 
-	var err error
+	// set-up bank locations
+	var bankEnd int
+	if s.launcher.isOtek() {
+		s.bank[3] = 32768   //page 0
+		s.bank[4] = 49152   //page 1
+		s.bank[5] = 16384   //page 2
+		s.bank[6] = 65536   //page 3
+		s.bank[7] = 81920   //page 4
+		s.bank[8] = 0       //page 5
+		s.bank[9] = 98304   //page 6
+		s.bank[10] = 114688 //page 7
+		bankEnd = 8
+	} else {
+		s.bank[4] = 16384 //page 2
+		s.bank[5] = 32768 //page 0
+		s.bank[8] = 0     //page 5
+		bankEnd = 3
+	}
 
 	if s.launcher.addLength() == 0 { // version 1 snapshot & 48k only
 		log.Debug("snapshot version: v1")
 		s.version = 1
 		if !s.sna && s.launcher.isCompressed() {
 			log.Debug("decompressing snapshot")
-			err = decompressZ80(rd, s.main)
+			err = decompressZ80(rd, s.main[:49152])
 		} else {
 			log.Debug("reading snapshot")
-			_, err = io.ReadFull(rd, s.main)
+			_, err = io.ReadFull(rd, s.main[:49152])
 		}
 		if err != nil {
 			return err
+		}
+
+		if err = s.launcher.postSetup(rd); err != nil {
+			return err
+		}
+
+		if s.launcher.isOtek() {
+
+			var pageLayout [7]int
+			for i := range pageLayout {
+				pageLayout[i] = 99
+			}
+			pageLayout[0] = int(s.launcher.get(ixOUT) & 7)
+
+			switch pageLayout[0] {
+			case 0:
+				pageLayout[0] = 32768
+				pageLayout[1] = 49152
+				pageLayout[2] = 65536
+				pageLayout[3] = 81920
+				pageLayout[4] = 98304
+				pageLayout[5] = 114688
+			case 1:
+				pageLayout[0] = 49152
+				pageLayout[1] = 32768
+				pageLayout[2] = 65536
+				pageLayout[3] = 81920
+				pageLayout[4] = 98304
+				pageLayout[5] = 114688
+			case 2:
+				pageLayout[0] = 16384
+				pageLayout[1] = 32768
+				pageLayout[2] = 49152
+				pageLayout[3] = 65536
+				pageLayout[4] = 81920
+				pageLayout[5] = 98304
+				pageLayout[6] = 114688
+			case 3:
+				pageLayout[0] = 65536
+				pageLayout[1] = 32768
+				pageLayout[2] = 49152
+				pageLayout[3] = 81920
+				pageLayout[4] = 98304
+				pageLayout[5] = 114688
+			case 4:
+				pageLayout[0] = 81920
+				pageLayout[1] = 32768
+				pageLayout[2] = 49152
+				pageLayout[3] = 65536
+				pageLayout[4] = 98304
+				pageLayout[5] = 114688
+			case 5:
+				pageLayout[0] = 0
+				pageLayout[1] = 32768
+				pageLayout[2] = 49152
+				pageLayout[3] = 65536
+				pageLayout[4] = 81920
+				pageLayout[5] = 98304
+				pageLayout[6] = 114688
+			case 6:
+				pageLayout[0] = 98304
+				pageLayout[1] = 32768
+				pageLayout[2] = 49152
+				pageLayout[3] = 65536
+				pageLayout[4] = 81920
+				pageLayout[5] = 114688
+			default:
+				pageLayout[0] = 114688
+				pageLayout[1] = 32768
+				pageLayout[2] = 49152
+				pageLayout[3] = 65536
+				pageLayout[4] = 81920
+				pageLayout[5] = 98304
+			}
+
+			if pageLayout[0] != 32768 {
+				for i := 0; i < 16384; i++ {
+					s.main[pageLayout[0]+i] = s.main[32768+i] //copy 0->?
+				}
+			}
+
+			for i := 1; i < 7; i++ {
+				if p := pageLayout[i]; p != 99 {
+					log.WithFields(
+						log.Fields{"address": p, "index": i}).Debug("reading page")
+					if _, err := io.ReadFull(rd, s.main[p:p+16384]); err != nil {
+						return err
+					}
+				}
+			}
 		}
 
 	} else { // version 2 & 3
@@ -106,23 +220,6 @@ func (s *snapshot) unpack(in io.Reader) error {
 		//    0 ROM, 1 ROM, 3 Page 0....10 page 7, 11 MF ROM.
 		// all pages are saved and there is no end marker
 		//
-		var bankEnd int
-		if s.launcher.isOtek() {
-			s.bank[3] = 32768   // page 0
-			s.bank[4] = 49152   // page 1
-			s.bank[5] = 16384   // page 2
-			s.bank[6] = 65536   // page 3
-			s.bank[7] = 81920   // page 4
-			s.bank[8] = 0       // page 5
-			s.bank[9] = 98304   // page 6
-			s.bank[10] = 114688 // page 7
-			bankEnd = 8
-		} else {
-			s.bank[4] = 16384 // page 2
-			s.bank[5] = 32768 // page 0
-			s.bank[8] = 0     // page 5
-			bankEnd = 3
-		}
 
 		var c byte
 		for ; bankEnd > 0; bankEnd-- {
