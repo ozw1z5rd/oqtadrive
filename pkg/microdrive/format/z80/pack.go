@@ -56,10 +56,10 @@ func (s *snapshot) pack() error {
 
 	packScreen := func(main []byte) {
 		scr.data = make([]byte, 6912+216+109)
-		scr.length = zxsc(main, scr.data[len(scrLoad):], 6912, true, "S")
+		scr.length = zxsc(main, scr.data[len(scrLoad):], 6912, true, "0")
 		scr.length += copy(scr.data, scrLoad) // add m/c
-		scr.file = fmt.Sprintf("%-10s", "S")
-		scr.start = 25088
+		scr.file = fmt.Sprintf("%-10s", "0")
+		scr.start = 32179
 		scr.param = 0xffff
 		scr.dataType = 0x03
 		log.Debugf("screen file: %d", scr.length)

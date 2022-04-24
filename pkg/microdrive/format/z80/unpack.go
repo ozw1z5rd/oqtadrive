@@ -258,23 +258,20 @@ func (s *snapshot) unpack(in io.Reader) error {
 
 	rand := s.launcher.randomize()
 
+	s.code = make([]byte, len(mdrBln))
+	copy(s.code, mdrBln)
+
 	if s.launcher.isOtek() {
 		log.Debug("snapshot size: 128k")
-		s.code = make([]byte, len(mdrBl128k))
-		copy(s.code, mdrBl128k)
-		s.code[ix128kBrd] = s.launcher.borderColor()
-		s.code[ix128kPap] = s.launcher.borderColor()
-		s.code[ix128kUsr] = byte(rand)
-		s.code[ix128kUsr+1] = byte(rand >> 8)
 	} else {
 		log.Debug("snapshot size: 48k")
-		s.code = make([]byte, len(mdrBl48k))
-		copy(s.code, mdrBl48k)
-		s.code[ix48kBrd] = s.launcher.borderColor()
-		s.code[ix48kPap] = s.launcher.borderColor()
-		s.code[ix48kUsr] = byte(rand)
-		s.code[ix48kUsr+1] = byte(rand >> 8)
+		s.code[ixTo] = 0x30 // for i=0 to 0 as only one thing to load
 	}
+
+	s.code[ixBrd] = s.launcher.borderColor()
+	s.code[ixPap] = s.launcher.borderColor()
+	s.code[ixUsr] = byte(rand)
+	s.code[ixUsr+1] = byte(rand >> 8)
 
 	return nil
 }
