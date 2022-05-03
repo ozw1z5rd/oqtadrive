@@ -4,19 +4,23 @@ This guide shows you how to set up *OqtaDrive* using the installation `Makefile`
 
 ## Preparing the *RaspberryPi*
 
-- [Download the *Raspian* image](https://www.raspberrypi.org/software/operating-systems/), pick the *Raspberry Pi OS Lite* version, since you won't be needing a fully-fledged desktop system.
+- [Download the *Raspberry Pi OS* image](https://www.raspberrypi.org/software/operating-systems/), pick the *Raspberry Pi OS Lite* version, since you won't be needing a fully-fledged desktop system.
 
 - Use an image writer (e.g. *gnome-disk-utility* on *Ubuntu*) to write the image to a suitable micro SD card.
 
-- *Optional*: Use a partition editor such as *gparted* to increase the `root` partition to full size.
+- *Optional (but recommended)*: Use a partition editor such as *gparted* to increase the `root` partition to full size.
 
-- Create file `ssh` in the `boot` partition on the SD card. This file enables login via *ssh*, and can be empty ([details](https://www.raspberrypi.org/documentation/remote-access/ssh/)).
+- Create file `ssh` in the `boot` partition on the SD card. This file enables login via *ssh*, and can be empty ([details](https://www.raspberrypi.com/documentation/computers/remote-access.html#ssh)).
 
-- For letting the *Pi* access your wireless network, create file `wpa_supplicant.conf`, also in the `boot` partition. The contents of this file [is documented here](https://www.raspberrypi.com/documentation/computers/configuration.html#setting-up-a-headless-raspberry-pi).
+- For letting the *Pi* access your wireless network, create file `wpa_supplicant.conf`, also in the `boot` partition. The contents of this file [is documented here](https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-networking-2).
 
-- Place the SD card in the *Pi* and boot it up. Check your wireless router to find out which IP address it received, and log in via ssh, e.g. `ssh pi@192.168.1.12`.
+- A user needs to be configured (the default user has recently been removed from the *Raspberry Pi OS* images for security reasons). This is done by creating file `userconf.txt`, again in the `boot` partition. The content is a single line with `{user name}:{encrypted password}` (more details [here](https://www.raspberrypi.com/documentation/computers/configuration.html#configuring-a-user)). To encrypt your password, run this on a *Linux* system:
 
-- Change the password with `passwd`. The initial password is `raspberry`.
+    ```
+    echo 'mypassword' | openssl passwd -6 -stdin
+    ```
+
+- Place the SD card in the *Pi* and boot it up. Check your wireless router to find out which IP address it received, and log in via ssh, e.g. `ssh {user name}@192.168.1.12`.
 
 - Edit `/boot/config.txt` to enable the serial port:
 
@@ -49,7 +53,7 @@ PORT=/dev/ttyS0 make install patch_avrdude flash service_on
 ### The Long Version
 And here's the same with a bit more background information:
 
-- Install the *curl*, *jq*, and *gawk* OS packages, if they're not present. E.g. on *Debian* based systems such as *Raspian*, run:
+- Install the *curl*, *jq*, and *gawk* OS packages, if they're not present. E.g. on *Debian* based systems such as *RasberryPi OS*, run:
 
     `sudo apt install curl jq gawk`
 
@@ -73,7 +77,7 @@ And here's the same with a bit more background information:
 
     `PORT=/dev/ttyS0 make flash`
 
-- If you want to automatically start the *OqtaDrive* daemon whenever the system boots, you can enable it as a *systemd* service. This of course only works if your system is using *systemd* as its init system, which is the case with *Raspian* on the *Pi*. Note that also in this step, it's necessary to specify the serial port device:
+- If you want to automatically start the *OqtaDrive* daemon whenever the system boots, you can enable it as a *systemd* service. This of course only works if your system is using *systemd* as its init system, which is the case with *RaspberryPi OS* on the *Pi*. Note that also in this step, it's necessary to specify the serial port device:
 
     `PORT=/dev/ttyS0 make service_on`
 
@@ -89,8 +93,7 @@ The installer `Makefile` has a few more targets you can invoke, and environment 
 
 ## Hints for *Pi* Setup
 
-- Fix the IP address of the *Pi* in your router, so you don't have to look it up each time you want to `ssh` into it.
-- For password-less login, you can also place your public *ssh* key in `/home/pi/.ssh/authorized_keys`.
-- You can add the environment variables you want to set such as `PORT` to the `.bashrc` of the `pi` user, so they're already set up when you `ssh` into the *Pi*.
+- Make the IP address of the *Pi* static in your router if it supports this, so you don't have to look it up each time you want to `ssh` into it.
+- For password-less login, you can also place your public *ssh* key in `/home/{user name}/.ssh/authorized_keys`.
+- You can add the environment variables you want to set such as `PORT` to the `.bashrc` of your user, so they're already set up when you `ssh` into the *Pi*.
 - If you've done a complete setup on a *Pi Zero W*, and you want to switch to a *Pi Zero 2 W*, you can essentially just take the micro SD card and plug it into the new board. There's one catch however: The *Zero 2 W* uses a different Wifi module, so Wifi setup gets repeated first time you boot it from the card. Only, the `wpa_supplicant.conf` file you placed in the `boot` partition during the initial setup is no longer there, because it got removed after the *Pi* completed Wifi setup. So before plugging the card into the new board, recreate `wpa_supplicant.conf` in the `boot` partition.
- 
