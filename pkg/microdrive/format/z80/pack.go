@@ -45,11 +45,6 @@ func (s *snapshot) pack() error {
 	s.cart.SetName(s.name)
 	var wg sync.WaitGroup
 
-	// run file
-	run := &part{fmt.Sprintf("%-10s", "run"),
-		s.code, len(s.code), 23813, 0, 0x00, nil}
-	log.Debugf("run file: %d", run.length)
-
 	// screen
 	scr := &part{}
 	wg.Add(1)
@@ -62,7 +57,7 @@ func (s *snapshot) pack() error {
 		scr.start = 32179
 		scr.param = 0xffff
 		scr.dataType = 0x03
-		log.Debugf("screen file: %d", scr.length)
+		log.WithField("size", scr.length).Debug("screen file")
 	}
 
 	go func() {
@@ -96,7 +91,7 @@ func (s *snapshot) pack() error {
 			pg1.param = 0xffff
 			pg1.file = fmt.Sprintf("%-10d", 1)
 			pg1.dataType = 0x03
-			log.Debugf("page file 1: %d", pg1.length)
+			log.WithField("size", pg1.length).Debug("page file 1")
 		}()
 
 		// page 3
@@ -112,7 +107,7 @@ func (s *snapshot) pack() error {
 			pg3.param = 0xffff
 			pg3.file = fmt.Sprintf("%-10d", 2)
 			pg3.dataType = 0x03
-			log.Debugf("page file 3: %d", pg3.length)
+			log.WithField("size", pg3.length).Debug("page file 3")
 		}()
 
 		// page 4
@@ -128,7 +123,7 @@ func (s *snapshot) pack() error {
 			pg4.start = 32255
 			pg4.param = 0xffff
 			pg4.dataType = 0x03
-			log.Debugf("page file 4: %d", pg4.length)
+			log.WithField("size", pg4.length).Debug("page file 4")
 		}()
 
 		// page 6
@@ -144,7 +139,7 @@ func (s *snapshot) pack() error {
 			pg6.start = 32255
 			pg6.param = 0xffff
 			pg6.dataType = 0x03
-			log.Debugf("page file 6: %d", pg6.length)
+			log.WithField("size", pg6.length).Debug("page file 6")
 		}()
 
 		// page 7
@@ -160,13 +155,13 @@ func (s *snapshot) pack() error {
 			pg7.start = 32255
 			pg7.param = 0xffff
 			pg7.dataType = 0x03
-			log.Debugf("page file 7: %d", pg7.length)
+			log.WithField("size", pg7.length).Debug("page file 7")
 		}()
 	}
 
-	// main + launcher (handled together, i.e. just one work item)
+	// runner & main
 	main := &part{}
-	launch := &part{}
+	run := &part{}
 	wg.Add(1)
 
 	// The hidden launcher modifies main, so we need to give it its own copy to
@@ -177,7 +172,7 @@ func (s *snapshot) pack() error {
 
 	go func() {
 		defer wg.Done()
-		main.data = make([]byte, 42240+1320)
+		main.data = make([]byte, s.launcher.mainSize()+10240)
 
 		delta := 3
 		dgap := 0
@@ -188,9 +183,9 @@ func (s *snapshot) pack() error {
 				return
 			}
 			// up to the full size - delta
-			main.length = zxsc(mainCp[s.launcher.startPos():], main.data,
+			main.length = zxsc(mainCp[s.launcher.startPos():], main.data[8704:],
 				s.launcher.mainSize()-delta, false, "M")
-			dgap = decompressf(main.data, main.length, s.launcher.mainSize())
+			dgap = decompressf(main.data[8704:], main.length, s.launcher.mainSize())
 			delta += dgap
 			if delta > BGap {
 				main.err = fmt.Errorf(
@@ -203,32 +198,30 @@ func (s *snapshot) pack() error {
 			}
 		}
 
-		maxSize := 40704 // 0x6100 lowest point
-		if main.length > maxSize-delta {
-			// too big to fit in Spectrum memory
-			main.err = fmt.Errorf(
-				"cannot compress main block, max size exceeded: %d > %d",
-				main.length, maxSize-delta)
+		maxSize := 40624 // 0x6150 onwards
+		var adder int
+		adder, main.err = s.launcher.getAdder(delta, main.length, maxSize)
+		if main.err != nil {
 			return
 		}
+		main.length += adder
 
+		s.launcher.flushMain(main.data, mainCp, adder, delta)
+		main.data = main.data[8704-adder:]
 		main.start = 65536 - main.length
 		main.param = 0xffff
 		main.file = fmt.Sprintf("%-10s", "M")
 		main.dataType = 0x03
-		log.Debugf("main file: %d (delta: %d)", main.length, delta)
+		log.WithFields(log.Fields{
+			"size": main.length, "delta": delta}).Debug("main file")
 
-		//launcher
-		launch.length = 65536 - main.length // start of compression
-		s.launcher.set(ixCP, byte(launch.length))
-		s.launcher.set(ixCP+1, byte(launch.length>>8))
-
-		s.launcher.flush(mainCp, launch, delta)
-
-		launch.file = fmt.Sprintf("%-10s", "L")
-		launch.param = 0xffff
-		launch.dataType = 0x03
-		log.Debugf("launcher file: %d", launch.length)
+		// run file
+		s.launcher.flushRun(run)
+		run.file = fmt.Sprintf("%-10s", "run")
+		run.start = 23813
+		run.param = 0
+		run.dataType = 0x00
+		log.WithField("size", run.length).Debug("run file")
 	}()
 
 	wg.Wait()
@@ -240,7 +233,7 @@ func (s *snapshot) pack() error {
 		packScreen(mainCp)
 	}
 
-	parts := []*part{run, scr, pg1, pg3, pg4, pg6, pg7, main, launch}
+	parts := []*part{run, scr, pg1, pg3, pg4, pg6, pg7, main}
 
 	// position access index at top most sector
 	s.cart.SeekToStart()

@@ -93,20 +93,20 @@ func (s *snapshot) unpack(in io.Reader) error {
 	}
 
 	if s.launcher.addLength() == 0 { // version 1 snapshot & 48k only
-		log.Debug("snapshot version: v1")
 		s.version = 1
 		if !s.sna && s.launcher.isCompressed() {
-			log.Debug("decompressing snapshot")
+			log.WithField("version", s.version).Debug("decompressing snapshot")
 			err = decompressZ80(rd, s.main[:49152])
 		} else {
-			log.Debug("reading snapshot")
+			log.WithField("version", s.version).Debug("reading snapshot")
 			_, err = io.ReadFull(rd, s.main[:49152])
 		}
 		if err != nil {
 			return err
 		}
 
-		if err = s.launcher.postSetup(rd); err != nil {
+		var c byte
+		if c, err = s.launcher.postSetup(rd); err != nil {
 			return err
 		}
 
@@ -116,7 +116,7 @@ func (s *snapshot) unpack(in io.Reader) error {
 			for i := range pageLayout {
 				pageLayout[i] = 99
 			}
-			pageLayout[0] = int(s.launcher.get(ixOUT) & 7)
+			pageLayout[0] = int(c & 7)
 
 			switch pageLayout[0] {
 			case 0:
@@ -198,12 +198,11 @@ func (s *snapshot) unpack(in io.Reader) error {
 
 	} else { // version 2 & 3
 		if s.launcher.addLength() == 23 {
-			log.Debug("snapshot version: v2")
 			s.version = 2
 		} else {
-			log.Debug("snapshot version: v3")
 			s.version = 3
 		}
+		log.WithField("version", s.version).Debug("reading snapshot")
 
 		// Byte    Length  Description
 		// -------------------------- -
@@ -250,28 +249,25 @@ func (s *snapshot) unpack(in io.Reader) error {
 		}
 	}
 
-	if err := validateHardwareMode(s.launcher.hardwareMode(), s.version); err != nil {
+	var hwm string
+	if hwm, err = validateHardwareMode(
+		s.launcher.hardwareMode(), s.version); err != nil {
 		return err
 	}
 
-	s.launcher.adjustStackPos(s.main, s.sna)
-
-	rand := s.launcher.randomize()
-
-	s.code = make([]byte, len(mdrBln))
-	copy(s.code, mdrBln)
-
-	if s.launcher.isOtek() {
-		log.Debug("snapshot size: 128k")
-	} else {
-		log.Debug("snapshot size: 48k")
-		s.code[ixTo] = 0x30 // for i=0 to 0 as only one thing to load
+	if _, err := s.launcher.adjustStackPos(s.main, s.sna); err != nil {
+		return err
 	}
 
-	s.code[ixBrd] = s.launcher.borderColor()
-	s.code[ixPap] = s.launcher.borderColor()
-	s.code[ixUsr] = byte(rand)
-	s.code[ixUsr+1] = byte(rand >> 8)
+	size := "48k"
+	if s.launcher.isOtek() {
+		size = "128k"
+	}
+
+	log.WithFields(log.Fields{
+		"size":          size,
+		"h/w_mode":      hwm,
+		"h/w_mode_byte": s.launcher.hardwareMode()}).Debug("snapshot read")
 
 	return nil
 }

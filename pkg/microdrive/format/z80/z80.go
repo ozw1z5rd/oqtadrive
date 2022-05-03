@@ -41,9 +41,8 @@ type snapshot struct {
 	//
 	sna      bool
 	version  int
-	main     []byte
 	launcher launcher
-	code     []byte
+	main     []byte
 	bank     []int
 	//
 	name string
