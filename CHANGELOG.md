@@ -1,5 +1,12 @@
 # Change Log
 
+## 0.2.5
+This release does not require re-flashing the adapter. There were no changes to the firmware.
+
+### Daemon / `oqtactl`
+- ported version v2.00 from *Z80onMDR_Lite*; incorporates new 4 stage loader with best in class compatibility, including full *AY* register restoration
+- doc updates
+
 ## 0.2.4
 This release requires re-flashing the adapter. Protocol version remains at `3`.
 
