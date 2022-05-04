@@ -22,7 +22,7 @@
 SHELL = /bin/bash
 
 REPO = oqtadrive
-OQTADRIVE_RELEASE = 0.2.5
+OQTADRIVE_RELEASE = 0.2.6-devel
 OQTADRIVE_VERSION := $(shell git describe --always --tag --dirty)
 
 ROOT = $(shell pwd)
@@ -32,7 +32,7 @@ ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 UI_BASE = $(ROOT)/ui/web
 
-GO_IMAGE = golang:1.17.1-buster@sha256:2a0bd53951c1b1746c5adab10e1db1495cc6f2da0a3d21818466265e34a78597
+GO_IMAGE = golang:1.18.1-buster@sha256:f1e97d64a50f4c2b4fa61211f5206e636a54f992a047d192d6d068fbcd1946c3
 JSMINIFY_IMAGE = tdewolff/minify@sha256:3a1b86635d8428bb287607c2ca8aab0b23237e4685e02a598397aea0f470b549
 
 ## env
