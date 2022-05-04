@@ -35,6 +35,8 @@ const MaxSectorLength = HeaderLength + RecordLength + FormatExtraBytes
 // sector numbers range from 0 through 254
 const SectorCount = 255
 
+const FileHeaderLength = 64 // only in first record of each file
+
 //
 func toQLCheckSum(sum int) int {
 	return (0x0f0f + sum) % 0x10000

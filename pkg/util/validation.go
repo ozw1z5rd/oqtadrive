@@ -1,6 +1,6 @@
 /*
    OqtaDrive - Sinclair Microdrive emulator
-   Copyright (c) 2021, Alexander Vollschwitz
+   Copyright (c) 2022, Alexander Vollschwitz
 
    This file is part of OqtaDrive.
 
@@ -18,24 +18,32 @@
    along with OqtaDrive. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package ql
-
-import (
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
-)
+package util
 
 //
-func NewCartridge() base.Cartridge {
-	return &cartridge{base.NewCartridge(client.QL, SectorCount)}
+type Validation struct {
+	validated bool
+	err       error
 }
 
 //
-type cartridge struct {
-	base.Cartridge
+func (v *Validation) Reset() {
+	v.validated = false
+	v.err = nil
 }
 
 //
-func (c *cartridge) FS() base.FileSystem {
-	return newFs(c)
+func (v *Validation) WasValidated() bool {
+	return v.validated
+}
+
+//
+func (v *Validation) SetError(e error) {
+	v.validated = true
+	v.err = e
+}
+
+//
+func (v *Validation) GetError() error {
+	return v.err
 }

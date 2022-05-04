@@ -1,6 +1,6 @@
 /*
    OqtaDrive - Sinclair Microdrive emulator
-   Copyright (c) 2021, Alexander Vollschwitz
+   Copyright (c) 2022, Alexander Vollschwitz
 
    This file is part of OqtaDrive.
 
@@ -18,24 +18,25 @@
    along with OqtaDrive. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package ql
-
-import (
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
-	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
-)
+package base
 
 //
-func NewCartridge() base.Cartridge {
-	return &cartridge{base.NewCartridge(client.QL, SectorCount)}
+func NewFsStats(sectors, used int) *FsStats {
+	return &FsStats{sectors: sectors, used: used}
 }
 
 //
-type cartridge struct {
-	base.Cartridge
+type FsStats struct {
+	sectors int
+	used    int
 }
 
 //
-func (c *cartridge) FS() base.FileSystem {
-	return newFs(c)
+func (s *FsStats) Sectors() int {
+	return s.sectors
+}
+
+//
+func (s *FsStats) Used() int {
+	return s.used
 }

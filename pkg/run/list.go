@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/xelalexv/oqtadrive/pkg/control"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/format"
 )
 
@@ -90,7 +91,7 @@ func (l *List) Run() error {
 			return err
 		}
 
-		cart.List(os.Stdout)
+		control.WriteFileList(os.Stdout, cart)
 
 	} else if l.Drive > 0 {
 		if err := validateDrive(l.Drive); err != nil {

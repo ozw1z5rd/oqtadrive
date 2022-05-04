@@ -21,10 +21,6 @@
 package if1
 
 import (
-	"fmt"
-	"io"
-	"sort"
-
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
 )
@@ -38,54 +34,10 @@ func NewCartridge() base.Cartridge {
 
 //
 type cartridge struct {
-	base.CartridgeBase
+	base.Cartridge
 }
 
 //
-func (c *cartridge) List(w io.Writer) {
-
-	fmt.Fprintf(w, "\n%s\n\n", c.Name())
-
-	dir := make(map[string]int)
-	used := 0
-
-	for ix := 0; ix < c.SectorCount(); ix++ {
-
-		if sec := c.GetNextSector(); sec != nil {
-			if rec := sec.Record(); rec != nil {
-
-				if rec.Flags()&RecordFlagsUsed == 0 {
-					continue
-				}
-
-				used++
-
-				name := translate(rec.Name())
-				if name == "" {
-					continue
-				}
-
-				size, ok := dir[name]
-				if ok {
-					size += rec.Length()
-				} else {
-					size = rec.Length()
-				}
-				dir[name] = size
-			}
-		}
-	}
-
-	var files []string
-	for f := range dir {
-		files = append(files, f)
-	}
-	sort.Strings(files)
-
-	for _, f := range files {
-		fmt.Fprintf(w, "%-16s%8d\n", f, dir[f])
-	}
-
-	fmt.Fprintf(w, "\n%d of %d sectors used (%dkb free)\n\n",
-		used, c.SectorCount(), (c.SectorCount()-used)/2)
+func (c *cartridge) FS() base.FileSystem {
+	return newFs(c)
 }

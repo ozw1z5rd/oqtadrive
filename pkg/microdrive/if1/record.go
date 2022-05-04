@@ -31,26 +31,38 @@ import (
 
 //
 var recordIndex = map[string][2]int{
-	"flags":        {12, 1},
-	"number":       {13, 1},
-	"length":       {14, 2},
-	"name":         {16, 10},
-	"header":       {12, 14},
-	"checksum":     {26, 1},
-	"data":         {27, 512},
-	"dataChecksum": {539, 1},
+	"flags":         {12, 1},
+	"number":        {13, 1},
+	"length":        {14, 2},
+	"name":          {16, 10},
+	"header":        {12, 14},
+	"checksum":      {26, 1},
+	"data":          {27, 512},
+	"fileHeader":    {27, 9}, //      start of file header, only in first record
+	"fileType":      {27, 1}, //                               of each file only
+	"fileLength":    {28, 2},
+	"startAddress":  {30, 2},
+	"programLength": {32, 2},
+	"lineNumber":    {34, 2}, //                              end of file header
+	"dataChecksum":  {539, 1},
 }
 
 //
 var recordIndexEarlyROMs = map[string][2]int{
-	"flags":        {12, 1},
-	"number":       {13, 1},
-	"length":       {14, 2},
-	"name":         {16, 10},
-	"header":       {12, 14},
-	"checksum":     {26, 1},
-	"data":         {27, 610},
-	"dataChecksum": {638, 1},
+	"flags":         {12, 1},
+	"number":        {13, 1},
+	"length":        {14, 2},
+	"name":          {16, 10},
+	"header":        {12, 14},
+	"checksum":      {26, 1},
+	"data":          {27, 610},
+	"fileHeader":    {27, 9}, //      start of file header, only in first record
+	"fileType":      {27, 1}, //                               of each file only
+	"fileLength":    {28, 2},
+	"startAddress":  {30, 2},
+	"programLength": {32, 2},
+	"lineNumber":    {34, 2}, //                              end of file header
+	"dataChecksum":  {638, 1},
 }
 
 //
@@ -130,6 +142,15 @@ func (r *record) HeaderChecksum() byte {
 //
 func (r *record) Data() []byte {
 	return r.block.GetSlice("data")
+}
+
+//
+func (r *record) Payload(fileLength int, last bool) ([]byte, error) {
+	start := 0
+	if r.Index() == 0 { // FIXME: error handling?
+		start += FileHeaderLength
+	}
+	return r.Data()[start:r.Length()], nil
 }
 
 //

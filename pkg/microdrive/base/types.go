@@ -30,14 +30,8 @@ import (
 //
 type Cartridge interface {
 	//
-	CartridgeBase
+	FS() FileSystem
 
-	List(w io.Writer)
-}
-
-//
-type CartridgeBase interface {
-	//
 	Lock(ctx context.Context) bool
 
 	Unlock()
@@ -159,6 +153,10 @@ type Record interface {
 	// Demuxed returns the plain data bytes of the record
 	Demuxed() []byte
 
+	// Data returns the raw data of the record, without header data, but
+	// possibly including file header and extraneous data
+	Data() []byte
+
 	//
 	Flags() byte
 
@@ -176,4 +174,14 @@ type Record interface {
 
 	// Validate validates the record
 	Validate() error
+}
+
+//
+type FileSystem interface {
+
+	//
+	Ls() (*FsStats, []*FileInfo, error)
+
+	//
+	Open(name string) (*File, error)
 }

@@ -27,6 +27,8 @@ const RecordLength = 540
 const RecordLengthMux = RecordLength + 1
 const FormatExtraBytes = 99
 
+const FileHeaderLength = 9 // only in first record of each file
+
 //
 const RecordFlagsUsed = 0x06
 

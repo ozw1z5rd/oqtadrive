@@ -36,8 +36,15 @@ var recordIndex = map[string][2]int{
 	"header":            {12, 2},
 	"headerChecksum":    {14, 2},
 	"data":              {24, 512},
-	"length":            {24, 4},
-	"name":              {38, 38},
+	"fileHeader":        {24, 64}, // start of file header, only in first record
+	"length":            {24, 4},  //                          of each file only
+	"accessKey":         {28, 1},
+	"fileType":          {29, 1},
+	"fileInfo":          {30, 8},
+	"name":              {38, 38}, // 2 bytes for length + name chars
+	"dateUpdate":        {76, 4},
+	"dateReference":     {80, 4},
+	"dateBackup":        {84, 4}, //                          end of file header
 	"dataChecksum":      {536, 2},
 	"extraData":         {538, 84},
 	"extraDataChecksum": {622, 2},
@@ -127,6 +134,27 @@ func (r *record) HeaderChecksum() int {
 //
 func (r *record) Data() []byte {
 	return r.block.GetSlice("data")
+}
+
+//
+func (r *record) Payload(fileLength int, last bool) ([]byte, error) {
+
+	d := r.Data()
+
+	if last {
+		if end := fileLength % len(d); end > 0 {
+			d = d[:end]
+		}
+	}
+
+	if r.Index() == 0 {
+		if len(d) < FileHeaderLength {
+			return nil, fmt.Errorf("incomplete record at index %d", r.Index())
+		}
+		d = d[FileHeaderLength:]
+	}
+
+	return d, nil
 }
 
 //

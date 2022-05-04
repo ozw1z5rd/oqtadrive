@@ -21,11 +21,13 @@
 package control
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
 
 	"github.com/xelalexv/oqtadrive/pkg/daemon"
+	"github.com/xelalexv/oqtadrive/pkg/microdrive/base"
 )
 
 //
@@ -68,17 +70,55 @@ func (a *api) driveInfo(w http.ResponseWriter, req *http.Request, info string) {
 
 	defer cart.Unlock()
 
+	var bytes []byte
+	name := getArg(req, "file")
+	if info == "dump" && name != "" {
+		file, err := cart.FS().Open(name)
+		if handleError(err, http.StatusUnprocessableEntity, w) {
+			return
+		}
+		bytes, err = file.Bytes()
+		if handleError(err, http.StatusUnprocessableEntity, w) {
+			return
+		}
+	}
+
 	read, write := io.Pipe()
 
 	go func() {
 		switch info {
+
 		case "dump":
-			cart.Emit(write)
+			if name != "" {
+				d := hex.Dumper(write)
+				defer d.Close()
+				d.Write(bytes)
+			} else {
+				cart.Emit(write)
+			}
+
 		case "ls":
-			cart.List(write)
+			WriteFileList(write, cart)
 		}
 		write.Close()
 	}()
 
 	sendStreamReply(read, http.StatusOK, w)
+}
+
+//
+func WriteFileList(w io.Writer, c base.Cartridge) {
+
+	fmt.Fprintf(w, "\n%s\n\n", c.Name())
+
+	if stats, files, err := c.FS().Ls(); err == nil {
+		for _, f := range files {
+			fmt.Fprintf(w, "%-16s%8d  %-6v\n",
+				f.Name(), f.Size(), f.GetAnnotation("file-type"))
+		}
+		fmt.Fprintf(w, "\n%d of %d sectors used (%dkb free)\n\n",
+			stats.Used(), stats.Sectors(), (stats.Sectors()-stats.Used())/2)
+	} else {
+		fmt.Fprintf(w, "\nerror listing files: %v\n\n", err)
+	}
 }

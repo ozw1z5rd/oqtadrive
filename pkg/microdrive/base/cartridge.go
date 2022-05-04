@@ -56,6 +56,11 @@ type cartridge struct {
 }
 
 //
+func (c *cartridge) FS() FileSystem {
+	panic("FS() on cartridge base should never be called")
+}
+
+//
 func (c *cartridge) Lock(ctx context.Context) bool {
 	select {
 	case c.lock <- true:

@@ -22,6 +22,7 @@ package run
 
 import (
 	"bufio"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,14 +36,15 @@ func NewDump() *Dump {
 
 	d := &Dump{}
 	d.Runner = *NewRunner(
-		"dump [-d|--drive {drive}] [-i|--input {file}] [-a|--address {address}]",
+		"dump [-d|--drive {drive}] [-f|--file {file}] [-i|--input {file}] [-a|--address {address}]",
 		"dump cartridge from file or daemon",
 		"\nUse the dump command to output a hex dump for a cartridge from file or from daemon.",
 		"", runnerHelpEpilogue, d.Run)
 
 	d.AddBaseSettings()
-	d.AddSetting(&d.File, "input", "i", "", nil, "cartridge input file", false)
+	d.AddSetting(&d.Input, "input", "i", "", nil, "cartridge input file", false)
 	d.AddSetting(&d.Drive, "drive", "d", "", 1, "drive number (1-8)", false)
+	d.AddSetting(&d.File, "file", "f", "", nil, "file on cartridge to dump", false)
 
 	return d
 }
@@ -53,6 +55,7 @@ type Dump struct {
 	Runner
 	//
 	Drive int
+	Input string
 	File  string
 }
 
@@ -61,14 +64,14 @@ func (d *Dump) Run() error {
 
 	d.ParseSettings()
 
-	if d.File != "" {
-		f, err := os.Open(d.File)
+	if d.Input != "" {
+		f, err := os.Open(d.Input)
 		if err != nil {
 			return err
 		}
 		defer f.Close()
 
-		_, typ, comp := format.SplitNameTypeCompressor(d.File)
+		_, typ, comp := format.SplitNameTypeCompressor(d.Input)
 
 		rd, err := format.NewCartReader(ioutil.NopCloser(bufio.NewReader(f)), comp)
 		if err != nil {
@@ -89,15 +92,30 @@ func (d *Dump) Run() error {
 			return err
 		}
 
-		cart.Emit(os.Stdout)
+		if d.File != "" {
+			f, err := cart.FS().Open(d.File)
+			if err != nil {
+				return err
+			}
+			//if bytes, err := f.Bytes(); err == nil {
+			if bytes, err := ioutil.ReadAll(f); err == nil {
+				d := hex.Dumper(os.Stdout)
+				defer d.Close()
+				d.Write(bytes)
+			} else {
+				return err
+			}
+		} else {
+			cart.Emit(os.Stdout)
+		}
 
 	} else {
 		if err := validateDrive(d.Drive); err != nil {
 			return err
 		}
 
-		resp, err := d.apiCall("GET", fmt.Sprintf("/drive/%d/dump", d.Drive),
-			false, nil)
+		resp, err := d.apiCall("GET",
+			fmt.Sprintf("/drive/%d/dump?file=%s", d.Drive, d.File), false, nil)
 		if err != nil {
 			return err
 		}
