@@ -26,18 +26,20 @@ import (
 )
 
 //
-func NewCartridge() base.Cartridge {
-	ret := &cartridge{base.NewCartridge(client.IF1, SectorCount)}
-	ret.RewindAccessIx(false)
-	return ret
+func NewCartridge() *base.Cartridge {
+	impl := &cartridge{}
+	cart := base.NewCartridge(client.IF1, SectorCount, impl)
+	impl.Cartridge = cart
+	cart.RewindAccessIx(false)
+	return cart
 }
 
 //
 type cartridge struct {
-	base.Cartridge
+	*base.Cartridge
 }
 
 //
 func (c *cartridge) FS() base.FileSystem {
-	return newFs(c)
+	return newFs(c.Cartridge)
 }

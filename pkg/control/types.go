@@ -58,7 +58,7 @@ type Cartridge struct {
 }
 
 //
-func (c *Cartridge) fill(cart base.Cartridge) {
+func (c *Cartridge) fill(cart *base.Cartridge) {
 	c.Name = strings.TrimSpace(cart.Name())
 	c.Formatted = cart.IsFormatted()
 	c.WriteProtected = cart.IsWriteProtected()

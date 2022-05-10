@@ -46,7 +46,7 @@ func NewMDR() *MDR {
 
 //
 func (m *MDR) Read(in io.Reader, strict, repair bool,
-	p util.Params) (base.Cartridge, error) {
+	p util.Params) (*base.Cartridge, error) {
 
 	cart := if1.NewCartridge()
 	r := 0
@@ -142,7 +142,7 @@ func (m *MDR) Read(in io.Reader, strict, repair bool,
 }
 
 //
-func (m *MDR) Write(cart base.Cartridge, out io.Writer, p util.Params) error {
+func (m *MDR) Write(cart *base.Cartridge, out io.Writer, p util.Params) error {
 
 	cart.SeekToStart()
 

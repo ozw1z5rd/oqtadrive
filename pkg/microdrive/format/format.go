@@ -32,12 +32,12 @@ import (
 // Reader interface for reading in a cartridge
 type Reader interface {
 	// when setting strict, invalid sectors are discarded
-	Read(in io.Reader, strict, repair bool, p util.Params) (base.Cartridge, error)
+	Read(in io.Reader, strict, repair bool, p util.Params) (*base.Cartridge, error)
 }
 
 // Writer interface for writing out a cartridge
 type Writer interface {
-	Write(cart base.Cartridge, out io.Writer, p util.Params) error
+	Write(cart *base.Cartridge, out io.Writer, p util.Params) error
 }
 
 // ReadWriter interface for reading/writing a cartridge

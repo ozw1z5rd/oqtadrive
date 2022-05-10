@@ -38,13 +38,13 @@ func (f *file) FileHeaderLength() int {
 }
 
 //
-func newFs(cart *cartridge) *fsys {
+func newFs(cart *base.Cartridge) *fsys {
 	return &fsys{cart: cart}
 }
 
 //
 type fsys struct {
-	cart *cartridge
+	cart *base.Cartridge
 }
 
 //
@@ -141,7 +141,7 @@ func (fs *fsys) Ls() (*base.FsStats, []*base.FileInfo, error) {
 }
 
 //
-func newSectorMap(cart base.Cartridge, s base.Sector,
+func newSectorMap(cart *base.Cartridge, s base.Sector,
 	index map[int]int) (*sectorMap, error) {
 
 	if s.Record() == nil {
@@ -156,7 +156,7 @@ func newSectorMap(cart base.Cartridge, s base.Sector,
 
 //
 type sectorMap struct {
-	cart    base.Cartridge
+	cart    *base.Cartridge
 	sectors []byte
 	index   map[int]int
 }

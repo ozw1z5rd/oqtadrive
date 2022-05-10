@@ -30,7 +30,7 @@ import (
 )
 
 //
-func NewCartridge(cl client.Client) (base.Cartridge, error) {
+func NewCartridge(cl client.Client) (*base.Cartridge, error) {
 
 	switch cl {
 

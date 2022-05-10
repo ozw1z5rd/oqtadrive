@@ -31,9 +31,19 @@ import (
 )
 
 //
-func NewCartridge(c client.Client, sectorCount int) *cartridge {
-	return &cartridge{
-		client:   c,
+type CartridgeImpl interface {
+	//
+	FS() FileSystem
+}
+
+//
+type cImpl = CartridgeImpl
+
+//
+func NewCartridge(c client.Client, sectorCount int, impl CartridgeImpl) *Cartridge {
+	return &Cartridge{
+		cImpl:    impl,
+		client:   c, // FIXME move
 		sectors:  make([]Sector, sectorCount),
 		accessIx: sectorCount - 1,
 		lock:     make(chan bool, 1),
@@ -41,7 +51,9 @@ func NewCartridge(c client.Client, sectorCount int) *cartridge {
 }
 
 //
-type cartridge struct {
+type Cartridge struct {
+	//
+	cImpl
 	//
 	name           string
 	writeProtected bool
@@ -56,12 +68,7 @@ type cartridge struct {
 }
 
 //
-func (c *cartridge) FS() FileSystem {
-	panic("FS() on cartridge base should never be called")
-}
-
-//
-func (c *cartridge) Lock(ctx context.Context) bool {
+func (c *Cartridge) Lock(ctx context.Context) bool {
 	select {
 	case c.lock <- true:
 		log.Trace("cartridge locked")
@@ -73,7 +80,7 @@ func (c *cartridge) Lock(ctx context.Context) bool {
 }
 
 //
-func (c *cartridge) Unlock() {
+func (c *Cartridge) Unlock() {
 	select {
 	case <-c.lock:
 		log.Trace("cartridge unlocked")
@@ -83,34 +90,34 @@ func (c *cartridge) Unlock() {
 }
 
 //
-func (c *cartridge) IsLocked() bool {
+func (c *Cartridge) IsLocked() bool {
 	return len(c.lock) > 0
 }
 
 //
-func (c *cartridge) Client() client.Client {
+func (c *Cartridge) Client() client.Client {
 	return c.client
 }
 
 //
-func (c *cartridge) Name() string {
+func (c *Cartridge) Name() string {
 	return c.name
 }
 
 //
-func (c *cartridge) SetName(n string) {
+func (c *Cartridge) SetName(n string) {
 	c.name = n
 }
 
 //
-func (c *cartridge) SectorCount() int {
+func (c *Cartridge) SectorCount() int {
 	return len(c.sectors)
 }
 
 // SeekToStart sets the access index such that the next call to GetNextSector
 // will retrieve the top-most sector, i.e. the sector with the highest sector
 // number.
-func (c *cartridge) SeekToStart() {
+func (c *Cartridge) SeekToStart() {
 
 	if !c.IsFormatted() {
 		return
@@ -133,25 +140,29 @@ func (c *cartridge) SeekToStart() {
 }
 
 //
-func (c *cartridge) Revert() {
+func (c *Cartridge) Revert() {
 	s := c.sectors
 	for l, r := 0, len(s)-1; l < r; l, r = l+1, r-1 {
 		s[l], s[r] = s[r], s[l]
 	}
 }
 
-//
-func (c *cartridge) GetNextSector() Sector {
+// GetNextSector gets the sector at the next access index, skipping slots
+// with nil sectors. Access index points to the slot of the returned sector
+// afterwards.
+func (c *Cartridge) GetNextSector() Sector {
 	return c.GetSectorAt(c.AdvanceAccessIx(true))
 }
 
-//
-func (c *cartridge) GetPreviousSector() Sector {
+// GetPreviousSector gets the sector at the previous access index, skipping
+// slots with nil sectors. Access index points to the slot of the returned
+// sector afterwards.
+func (c *Cartridge) GetPreviousSector() Sector {
 	return c.GetSectorAt(c.RewindAccessIx(true))
 }
 
 //
-func (c *cartridge) GetSectorAt(ix int) Sector {
+func (c *Cartridge) GetSectorAt(ix int) Sector {
 	if 0 <= ix && ix < len(c.sectors) {
 		log.Tracef("getting sector at index %d", ix)
 		return c.sectors[ix]
@@ -161,18 +172,22 @@ func (c *cartridge) GetSectorAt(ix int) Sector {
 	return nil
 }
 
-//
-func (c *cartridge) SetNextSector(s Sector) {
+// SetNextSector sets the provided sector at the next access index, whether
+// there is a sector present at that index or not. Access index points to the
+// slot of the set sector afterwards.
+func (c *Cartridge) SetNextSector(s Sector) {
 	c.SetSectorAt(c.AdvanceAccessIx(false), s)
 }
 
-//
-func (c *cartridge) SetPreviousSector(s Sector) {
+// SetPreviousSector sets the provided sector at the previous access index,
+// whether there is a sector present at that index or not. Access index points
+// to the slot of the set sector afterwards.
+func (c *Cartridge) SetPreviousSector(s Sector) {
 	c.SetSectorAt(c.RewindAccessIx(false), s)
 }
 
 // setSector sets the provided sector in this cartridge at the given index.
-func (c *cartridge) SetSectorAt(ix int, s Sector) {
+func (c *Cartridge) SetSectorAt(ix int, s Sector) {
 	if 0 <= ix && ix < len(c.sectors) {
 		log.Tracef("setting sector at index %d", ix)
 		c.sectors[ix] = s
@@ -186,7 +201,7 @@ func (c *cartridge) SetSectorAt(ix int, s Sector) {
 }
 
 //
-func (c *cartridge) IsFormatted() bool {
+func (c *Cartridge) IsFormatted() bool {
 	for _, s := range c.sectors {
 		if s != nil {
 			return true
@@ -196,22 +211,22 @@ func (c *cartridge) IsFormatted() bool {
 }
 
 //
-func (c *cartridge) IsWriteProtected() bool {
+func (c *Cartridge) IsWriteProtected() bool {
 	return c.writeProtected
 }
 
 //
-func (c *cartridge) SetWriteProtected(p bool) {
+func (c *Cartridge) SetWriteProtected(p bool) {
 	c.writeProtected = p
 }
 
 //
-func (c *cartridge) IsModified() bool {
+func (c *Cartridge) IsModified() bool {
 	return c.modified
 }
 
 //
-func (c *cartridge) SetModified(m bool) {
+func (c *Cartridge) SetModified(m bool) {
 	c.modified = m
 	if m {
 		c.autosaved = false
@@ -219,32 +234,32 @@ func (c *cartridge) SetModified(m bool) {
 }
 
 //
-func (c *cartridge) IsAutoSaved() bool {
+func (c *Cartridge) IsAutoSaved() bool {
 	return c.autosaved
 }
 
 //
-func (c *cartridge) SetAutoSaved(a bool) {
+func (c *Cartridge) SetAutoSaved(a bool) {
 	c.autosaved = a
 }
 
 //
-func (c *cartridge) AccessIx() int {
+func (c *Cartridge) AccessIx() int {
 	return c.accessIx
 }
 
 //
-func (c *cartridge) AdvanceAccessIx(skipEmpty bool) int {
+func (c *Cartridge) AdvanceAccessIx(skipEmpty bool) int {
 	return c.moveAccessIx(true, skipEmpty)
 }
 
 //
-func (c *cartridge) RewindAccessIx(skipEmpty bool) int {
+func (c *Cartridge) RewindAccessIx(skipEmpty bool) int {
 	return c.moveAccessIx(false, skipEmpty)
 }
 
 //
-func (c *cartridge) moveAccessIx(forward, skipEmpty bool) int {
+func (c *Cartridge) moveAccessIx(forward, skipEmpty bool) int {
 
 	from := c.accessIx
 
@@ -268,7 +283,7 @@ func (c *cartridge) moveAccessIx(forward, skipEmpty bool) int {
 }
 
 //
-func (c *cartridge) ensureIx(ix int) int {
+func (c *Cartridge) ensureIx(ix int) int {
 	if ix < 0 {
 		return c.SectorCount() - 1 - (-(ix + 1))%c.SectorCount()
 	}
@@ -276,7 +291,7 @@ func (c *cartridge) ensureIx(ix int) int {
 }
 
 //
-func (c *cartridge) Emit(w io.Writer) {
+func (c *Cartridge) Emit(w io.Writer) {
 	c.SeekToStart()
 	for ix := 0; ix < c.SectorCount(); ix++ {
 		sec := c.GetNextSector()

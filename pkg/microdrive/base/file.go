@@ -64,15 +64,12 @@ type File struct {
 
 //
 func (f *File) Bytes() ([]byte, error) {
-
 	b := make([]byte, f.Size())
-
-	n, err := f.Read(b)
-	if err != nil {
+	if n, err := f.Read(b); err != nil && (err != io.EOF || n == 0) {
 		return nil, err
+	} else {
+		return b[:n], nil
 	}
-
-	return b[:n], nil
 }
 
 //

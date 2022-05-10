@@ -44,7 +44,7 @@ func NewZ80(sna bool) *Z80 {
 
 //
 func (z *Z80) Read(in io.Reader, strict, repair bool,
-	p util.Params) (cart base.Cartridge, err error) {
+	p util.Params) (cart *base.Cartridge, err error) {
 
 	defer func() {
 		if e := recover(); e != nil {
@@ -73,6 +73,6 @@ func (z *Z80) Read(in io.Reader, strict, repair bool,
 }
 
 //
-func (z *Z80) Write(cart base.Cartridge, out io.Writer, p util.Params) error {
+func (z *Z80) Write(cart *base.Cartridge, out io.Writer, p util.Params) error {
 	return NewMDR().Write(cart, out, p)
 }

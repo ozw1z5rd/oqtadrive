@@ -40,13 +40,13 @@ func (f *file) FileHeaderLength() int {
 }
 
 //
-func newFs(cart *cartridge) *fsys {
+func newFs(cart *base.Cartridge) *fsys {
 	return &fsys{cart: cart}
 }
 
 //
 type fsys struct {
-	cart *cartridge
+	cart *base.Cartridge
 }
 
 //

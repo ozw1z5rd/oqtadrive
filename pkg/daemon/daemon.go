@@ -251,7 +251,7 @@ func (d *Daemon) UnloadCartridge(ix int, force bool) error {
 }
 
 // SetCartridge sets the cartridge at slot ix (1-based).
-func (d *Daemon) SetCartridge(ix int, c base.Cartridge, force bool) error {
+func (d *Daemon) SetCartridge(ix int, c *base.Cartridge, force bool) error {
 
 	if present, ok := d.GetCartridge(ix); !ok {
 		return fmt.Errorf("could not lock present cartridge")
@@ -278,9 +278,9 @@ func (d *Daemon) SetCartridge(ix int, c base.Cartridge, force bool) error {
 }
 
 //
-func (d *Daemon) setCartridge(ix int, c base.Cartridge) {
+func (d *Daemon) setCartridge(ix int, c *base.Cartridge) {
 	if 0 < ix && ix <= len(d.cartridges) {
-		d.cartridges[ix-1].Store(&c)
+		d.cartridges[ix-1].Store(c)
 	}
 }
 
@@ -308,7 +308,7 @@ func (d *Daemon) GetStatus(ix int) string {
 }
 
 // GetCartridge gets the cartridge at slot ix (1-based)
-func (d *Daemon) GetCartridge(ix int) (base.Cartridge, bool) {
+func (d *Daemon) GetCartridge(ix int) (*base.Cartridge, bool) {
 
 	cart := d.getCartridge(ix)
 
@@ -326,10 +326,10 @@ func (d *Daemon) GetCartridge(ix int) (base.Cartridge, bool) {
 }
 
 //
-func (d *Daemon) getCartridge(ix int) base.Cartridge {
+func (d *Daemon) getCartridge(ix int) *base.Cartridge {
 	if 0 < ix && ix <= len(d.cartridges) {
 		if cart := d.cartridges[ix-1].Load(); cart != nil {
-			return *(cart.(*base.Cartridge))
+			return cart.(*base.Cartridge)
 		}
 	}
 	return nil

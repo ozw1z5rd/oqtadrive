@@ -27,7 +27,7 @@ import (
 )
 
 //
-func RepairOrder(cart base.Cartridge) {
+func RepairOrder(cart *base.Cartridge) {
 
 	if cart == nil {
 		return

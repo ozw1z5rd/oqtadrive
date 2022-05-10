@@ -21,7 +21,6 @@
 package control
 
 import (
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -70,33 +69,22 @@ func (a *api) driveInfo(w http.ResponseWriter, req *http.Request, info string) {
 
 	defer cart.Unlock()
 
-	var bytes []byte
 	name := getArg(req, "file")
 	if info == "dump" && name != "" {
 		file, err := cart.FS().Open(name)
 		if handleError(err, http.StatusUnprocessableEntity, w) {
 			return
 		}
-		bytes, err = file.Bytes()
-		if handleError(err, http.StatusUnprocessableEntity, w) {
-			return
-		}
+		sendStreamReply(file, http.StatusOK, w)
+		return
 	}
 
 	read, write := io.Pipe()
 
 	go func() {
 		switch info {
-
 		case "dump":
-			if name != "" {
-				d := hex.Dumper(write)
-				defer d.Close()
-				d.Write(bytes)
-			} else {
-				cart.Emit(write)
-			}
-
+			cart.Emit(write)
 		case "ls":
 			WriteFileList(write, cart)
 		}
@@ -107,7 +95,7 @@ func (a *api) driveInfo(w http.ResponseWriter, req *http.Request, info string) {
 }
 
 //
-func WriteFileList(w io.Writer, c base.Cartridge) {
+func WriteFileList(w io.Writer, c *base.Cartridge) {
 
 	fmt.Fprintf(w, "\n%s\n\n", c.Name())
 

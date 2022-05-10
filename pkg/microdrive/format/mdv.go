@@ -50,7 +50,7 @@ func NewMDV() *MDV {
 }
 
 func (m *MDV) Read(in io.Reader, strict, repair bool,
-	p util.Params) (base.Cartridge, error) {
+	p util.Params) (*base.Cartridge, error) {
 
 	cart := ql.NewCartridge()
 	ix := 0
@@ -133,7 +133,7 @@ func (m *MDV) Read(in io.Reader, strict, repair bool,
 }
 
 //
-func (m *MDV) Write(cart base.Cartridge, out io.Writer, p util.Params) error {
+func (m *MDV) Write(cart *base.Cartridge, out io.Writer, p util.Params) error {
 
 	padding := make([]byte, 256)
 	for ix := range padding {

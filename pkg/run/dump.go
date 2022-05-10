@@ -97,8 +97,7 @@ func (d *Dump) Run() error {
 			if err != nil {
 				return err
 			}
-			//if bytes, err := f.Bytes(); err == nil {
-			if bytes, err := ioutil.ReadAll(f); err == nil {
+			if bytes, err := f.Bytes(); err == nil {
 				d := hex.Dumper(os.Stdout)
 				defer d.Close()
 				d.Write(bytes)
@@ -121,7 +120,15 @@ func (d *Dump) Run() error {
 		}
 		defer resp.Close()
 
-		if _, err := io.Copy(os.Stdout, resp); err != nil {
+		if d.File != "" {
+			if bytes, err := ioutil.ReadAll(resp); err == nil {
+				d := hex.Dumper(os.Stdout)
+				defer d.Close()
+				d.Write(bytes)
+			} else {
+				return err
+			}
+		} else if _, err := io.Copy(os.Stdout, resp); err != nil {
 			return err
 		}
 	}

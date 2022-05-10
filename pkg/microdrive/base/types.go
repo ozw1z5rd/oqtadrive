@@ -21,80 +21,10 @@
 package base
 
 import (
-	"context"
 	"io"
 
 	"github.com/xelalexv/oqtadrive/pkg/microdrive/client"
 )
-
-//
-type Cartridge interface {
-	//
-	FS() FileSystem
-
-	Lock(ctx context.Context) bool
-
-	Unlock()
-
-	IsLocked() bool
-
-	Client() client.Client
-
-	Name() string
-	SetName(n string)
-
-	SectorCount() int
-
-	SeekToStart()
-
-	Revert()
-
-	// GetNextSector gets the sector at the next access index, skipping slots
-	// with nil sectors. Access index points to the slot of the returned sector
-	// afterwards.
-	GetNextSector() Sector
-
-	// GetPreviousSector gets the sector at the previous access index, skipping
-	// slots with nil sectors. Access index points to the slot of the returned
-	// sector afterwards.
-	GetPreviousSector() Sector
-
-	GetSectorAt(ix int) Sector
-
-	// SetNextSector sets the provided sector at the next access index, whether
-	// there is a sector present at that index or not. Access index points to the
-	// slot of the set sector afterwards.
-	SetNextSector(s Sector)
-
-	// SetPreviousSector sets the provided sector at the previous access index,
-	// whether there is a sector present at that index or not. Access index points
-	// to the slot of the set sector afterwards.
-	SetPreviousSector(s Sector)
-
-	SetSectorAt(ix int, s Sector)
-
-	IsFormatted() bool
-
-	IsWriteProtected() bool
-
-	SetWriteProtected(p bool)
-
-	IsModified() bool
-
-	SetModified(m bool)
-
-	IsAutoSaved() bool
-
-	SetAutoSaved(a bool)
-
-	AccessIx() int
-
-	AdvanceAccessIx(skipEmpty bool) int
-
-	RewindAccessIx(skipEmpty bool) int
-
-	Emit(w io.Writer)
-}
 
 //
 type Sector interface {

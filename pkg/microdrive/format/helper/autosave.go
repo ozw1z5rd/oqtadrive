@@ -45,7 +45,7 @@ const ixClient = 1
 const ixFlags = 2
 
 //
-func AutoSave(drive int, cart base.Cartridge) error {
+func AutoSave(drive int, cart *base.Cartridge) error {
 
 	if cart == nil || !cart.IsFormatted() || cart.IsAutoSaved() {
 		return nil
@@ -120,7 +120,7 @@ func AutoSave(drive int, cart base.Cartridge) error {
 }
 
 //
-func AutoLoad(drive int) (base.Cartridge, error) {
+func AutoLoad(drive int) (*base.Cartridge, error) {
 
 	log.Infof("loading auto-save for drive %d", drive)
 

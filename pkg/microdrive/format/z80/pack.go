@@ -290,7 +290,7 @@ type part struct {
 }
 
 // add data to the virtual cartridge
-func addToCartridge(cart base.Cartridge, p *part) error {
+func addToCartridge(cart *base.Cartridge, p *part) error {
 
 	if p == nil {
 		return nil
@@ -443,7 +443,7 @@ func addToCartridge(cart base.Cartridge, p *part) error {
 }
 
 //
-func advanceWithInterleave(cart base.Cartridge) error {
+func advanceWithInterleave(cart *base.Cartridge) error {
 
 	cart.AdvanceAccessIx(false)
 	ix := cart.AdvanceAccessIx(false) // sector interleave
@@ -465,7 +465,7 @@ func advanceWithInterleave(cart base.Cartridge) error {
 }
 
 //
-func fillBlanks(cart base.Cartridge) error {
+func fillBlanks(cart *base.Cartridge) error {
 
 	for ix := 0; ix < cart.SectorCount(); ix++ {
 		if cart.GetSectorAt(ix) == nil {
@@ -479,7 +479,7 @@ func fillBlanks(cart base.Cartridge) error {
 }
 
 //
-func addBlankSectorAt(cart base.Cartridge, ix int) error {
+func addBlankSectorAt(cart *base.Cartridge, ix int) error {
 
 	var b bytes.Buffer
 

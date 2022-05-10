@@ -46,7 +46,7 @@ type snapshot struct {
 	bank     []int
 	//
 	name string
-	cart base.Cartridge
+	cart *base.Cartridge
 }
 
 //
@@ -59,7 +59,7 @@ func (s *snapshot) setName(n string) {
 
 // reads Z80 snapshot and converts it into a cartridge on the fly
 //
-func LoadZ80(in io.Reader, name, launcher string, sna bool) (base.Cartridge, error) {
+func LoadZ80(in io.Reader, name, launcher string, sna bool) (*base.Cartridge, error) {
 
 	start := time.Now()
 

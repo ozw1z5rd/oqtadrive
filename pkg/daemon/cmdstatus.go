@@ -39,7 +39,7 @@ const flagReadonly = 4
 //
 func (c *command) status(d *Daemon) error {
 
-	var cart base.Cartridge
+	var cart *base.Cartridge
 	var state byte = 0x80
 
 	drive, err := c.drive()
