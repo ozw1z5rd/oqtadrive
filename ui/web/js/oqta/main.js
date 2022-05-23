@@ -29,7 +29,9 @@ var statusIcons = {
     'modified':       'bi-app-indicator',
     'connected':      'bi-plug-fill',
     'disconnected':   'bi-plug',
-    'loading':        'bi-hourglass-split'
+    'loading':        'bi-hourglass-split',
+    'locked':         'bi-lock',
+    'unlocked':       'bi-unlock',
 };
 
 //
@@ -124,9 +126,11 @@ function getName(path) {
 //
 function userConfirm(title, question, callback) {
 
-    var mod = document.getElementById('modal');
+    var mod = document.getElementById('modal-confirm');
     mod.querySelector('.modal-title').textContent = title;
-    mod.querySelector('.modal-body').textContent = question;
+    var body = mod.querySelector('.modal-body');
+    body.textContent = question;
+    body.align = "left";
 
     var modInst = new bootstrap.Modal(mod, null);
 
@@ -143,21 +147,44 @@ function userConfirm(title, question, callback) {
 }
 
 //
+function userAlert(title, message) {
+
+    var mod = document.getElementById('modal-alert');
+    mod.querySelector('.modal-title').textContent = title;
+
+    var body = mod.querySelector('.modal-body');
+    body.textContent = message;
+    body.align = "left";
+
+    var modInst = new bootstrap.Modal(mod, null);
+
+    mod.querySelector('.btn-primary').onclick = function() {
+        modInst.hide();
+    };
+
+    modInst.show();
+    return modInst;
+}
+
+//
 async function showTab(t) {
-    var triggerEl = document.querySelector('a[data-bs-target="#' + t + '"]');
+    var triggerEl = document.querySelector(`a[data-bs-target="#${t}"]`);
     bootstrap.Tab.getOrCreateInstance(triggerEl).show();
 }
 
 // ----------------------------------------------------------------------------
 
 //
-var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+var popoverTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="popover"]'))
 var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
     return new bootstrap.Popover(popoverTriggerEl)
 })
 
 //
 var selectedSearchItem = "";
+
+// FIXME make more compact
 
 //
 fetch('/list', {
@@ -203,5 +230,6 @@ bt.onclick = function() {
 bt.disabled = true;
 
 //
-setupSearch()
+setupSearch();
+setupConfig();
 subscribe();

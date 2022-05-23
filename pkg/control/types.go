@@ -49,6 +49,13 @@ func (s *Status) String() string {
 }
 
 //
+type DriveMap struct {
+	Start  int  `json:"start"`
+	End    int  `json:"end"`
+	Locked bool `json:"locked"`
+}
+
+//
 type Cartridge struct {
 	Name           string `json:"name"`
 	Status         string `json:"status"`

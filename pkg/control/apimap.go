@@ -25,10 +25,19 @@ import (
 	"net/http"
 )
 
-// TODO: JSON response
+//
 func (a *api) getDriveMap(w http.ResponseWriter, req *http.Request) {
 
 	start, end, locked := a.daemon.GetHardwareDrives()
+
+	if wantsJSON(req) {
+		sendJSONReply(&DriveMap{
+			Start:  start,
+			End:    end,
+			Locked: locked}, http.StatusOK, w)
+		return
+	}
+
 	msg := ""
 
 	if start == -1 || end == -1 {

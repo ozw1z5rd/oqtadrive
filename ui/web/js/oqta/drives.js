@@ -136,9 +136,8 @@ function indicateLoading(drive) {
 //
 function upload(drive, name, format, compressor, data, isRef) {
 
-    var path = '/drive/' + drive + '?type=' + format
-        + '&compressor=' + compressor
-        + '&repair=true&name=' + encodeURIComponent(name);
+    var path = `/drive/${drive}?type=${format}&compressor=${compressor}&repair=true&name=`
+        + encodeURIComponent(name);
 
     if (isRef) {
         path += "&ref=true"

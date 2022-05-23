@@ -21,7 +21,7 @@
 //
 function showFiles(drive) {
 
-    fetch('/drive/' + drive + '/list', {
+    fetch(`/drive/${drive}/list`, {
         headers: {
             'Content-Type': 'application/json'
         }
@@ -40,7 +40,7 @@ function showFiles(drive) {
 function updateFileList(drive, data) {
 
     var div = document.getElementById('fileList');
-    div.innerHTML = 'drive ' + drive + ': ' + data.trim();
+    div.innerHTML = `drive ${drive}: ` + data.trim();
 
     var bt = document.getElementById('btSave');
     bt.name = drive;
@@ -53,7 +53,7 @@ function updateFileList(drive, data) {
 //
 function operateDrive(drive, action) {
 
-    var path = '/drive/' + drive;
+    var path = `/drive/${drive}`;
 
     switch (action) {
 

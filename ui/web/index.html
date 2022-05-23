@@ -56,6 +56,9 @@
                         <a class="nav-link" id="repo-tab" href="#repo"
                            data-bs-toggle="tab" data-bs-target="#repo" role="tab"
                            aria-controls="repo" aria-selected="false">Repo</a>
+                        <a class="nav-link" id="config-tab" href="#config"
+                           data-bs-toggle="tab" data-bs-target="#config" role="tab"
+                           aria-controls="config" aria-selected="false">Config</a>
                         <a class="nav-link" id="about-tab" href="#about"
                            data-bs-toggle="tab" data-bs-target="#about" role="tab"
                            aria-controls="about" aria-selected="false">About</a>
@@ -185,6 +188,63 @@ More <a href=http://blevesearch.com/docs/Query-String-Query/>details here</a>"><
 
                     </div>
 
+                    <div class="tab-pane fade mt-2" id="config" role="tabpanel"
+                        aria-labelledby="config-tab">
+
+                        <div class="row text-white-50 mb-1" align="left">
+                            <b>Hardware Drive Mapping</b>
+                        </div>
+                        <p align="left">Move a single drive or a group of hardware drives to the desired place within the Microdrive daisy chain. Start and end denote first and last drive of the group.</p>
+                        <div class="container features mt-3 mb-2">
+                            <div class="form-group row">
+                                <div class="col-2">
+                                    <label for="map-start" class="col-form-label">Start</label>
+                                </div>
+                                <div class="col-2">
+                                    <select class="form-control" id="map-start"></select>
+                                </div>
+                                <div class="col-1">
+                                    <label for="map-end" class="col-form-label">End</label>
+                                </div>
+                                <div class="col-2">
+                                    <select class="form-control" id="map-end"></select>
+                                </div>
+                                <div class="col-2">
+                                    <button type="button" id="btMapGet" class="btn btn-outline-light"
+                                        onclick="getDriveMapping()">Get</button>
+                                </div>
+                                <div class="col-2">
+                                    <button type="button" id="btMapSet" class="btn btn-outline-light"
+                                        onclick="setDriveMapping()">Set</button>
+                                </div>
+                                <div class="col-1 mt-2">
+                                    <i class="bi-question" id="map-icon" role="img" aria-label="lock"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row text-white-50 mt-3 mb-1" align="left">
+                            <b>Rumble Level</b>
+                        </div>
+                        <p align="left">If the adapter has a vibration motor fitted, you can set the rumble level here (0-255, 0 is off).</p>
+                        <div class="container features mt-3 mb-2">
+                            <div class="form-group row">
+                                <div class="col-2">
+                                    <label for="rumble-level" class="col-form-label">Level</label>
+                                </div>
+                                <div class="col-3">
+                                    <input type="number" class="form-control" id="rumble-level"></input>
+                                </div>
+                                <div class="col-4"></div>
+                                <div class="col-2">
+                                    <button type="button" id="btRumbleSet" class="btn btn-outline-light"
+                                        onclick="setRumbleLevel()">Set</button>
+                                </div>
+                                <div class="col-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="tab-pane fade mt-2" id="about" role="tabpanel"
                          aria-labelledby="about-tab">
                         <p align="left"><i>OqtaDrive</i> - Sinclair Microdrive emulator,
@@ -213,25 +273,41 @@ More <a href=http://blevesearch.com/docs/Query-String-Query/>details here</a>"><
             <footer class="mt-auto text-white-50">
                 <p>
                     <i class="bi-github" role="img" aria-label="GitHub"></i>
-                    <a href="https://github.com/xelalexv/oqtadrive"
+                    <a href="https://xelalexv.github.io/oqtadocs" target="_blank"
                        class="text-white">OqtaDrive</a> on GitHub
                 </p>
             </footer>
 
         </div>
 
-        <div class="modal fade" id="modal" tabindex="-1" aria-labelledby="modalLabel"
+        <div class="modal fade" id="modal-confirm" tabindex="-1" aria-labelledby="modalConfirmLabel"
              aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content text-white bg-dark">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalLabel">New message</h5>
+                        <h5 class="modal-title" id="modalConfirmLabel">New message</h5>
                     </div>
                     <div class="modal-body">Hi!</div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary"
-                                data-bs-dismiss="modal">No</button>
+                            data-bs-dismiss="modal-confirm">No</button>
                         <button type="button" class="btn btn-primary">Yes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modal-alert" tabindex="-1" aria-labelledby="modalAlertLabel"
+             aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content text-white bg-dark">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalAlertLabel">New message</h5>
+                    </div>
+                    <div class="modal-body">Hi!</div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary"
+                            data-bs-dismiss="modal-alert">OK</button>
                     </div>
                 </div>
             </div>

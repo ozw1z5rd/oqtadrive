@@ -33,7 +33,7 @@ ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 UI_BASE = $(ROOT)/ui/web
 
 GO_IMAGE = golang:1.18.1-buster@sha256:f1e97d64a50f4c2b4fa61211f5206e636a54f992a047d192d6d068fbcd1946c3
-JSMINIFY_IMAGE = tdewolff/minify@sha256:3a1b86635d8428bb287607c2ca8aab0b23237e4685e02a598397aea0f470b549
+JSMINIFY_IMAGE = tdewolff/minify@sha256:946e1146b79c3299626893f163e247ccd2bb4f1646e4537f1b0623bcd2023c33
 
 ## env
 # You can set the following environment variables when calling make:
@@ -109,7 +109,7 @@ endif
 ui: prep
 #	pack the UI artifacts
 #
-	$(call utils, minify_js drives.js files.js repo.js main.js)
+	$(call utils, minify_js drives.js files.js repo.js config.js main.js)
 	zip -r $(BINARIES)/ui.zip ui -x 'ui/web/js/oqta/*'
 
 
