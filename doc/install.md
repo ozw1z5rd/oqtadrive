@@ -33,6 +33,15 @@ This guide shows you how to set up *OqtaDrive* using the installation `Makefile`
     enable_uart=1
     ```
 
+- *Optional (but recommended)*: The Wifi module may go into power saving mode after a few minutes with no network activity. At least on my *Pi Zero W* it does that. This can be deactivate by editing `/etc/rc.local`:
+
+    `sudo nano /etc/rc.local`
+
+    Add the following line anywhere before the final `exit 0` line:
+    ```
+    /sbin/iwconfig wlan0 power off
+    ```
+
 - Reboot:
 
     `sudo reboot`
