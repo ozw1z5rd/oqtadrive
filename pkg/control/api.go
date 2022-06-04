@@ -81,6 +81,8 @@ func (a *api) Serve() error {
 	addRoute(router, "resync", "PUT", "/resync", a.resync)
 	addRoute(router, "config", "PUT", "/config", a.config)
 	addRoute(router, "search", "GET", "/search", a.search)
+	addRoute(router, "upgrade", "PUT", "/upgrade", a.upgrade)
+	addRoute(router, "version", "GET", "/version", a.version)
 
 	router.PathPrefix("/").Handler(
 		requestLogger(http.FileServer(http.Dir("./ui/web/")), "webui"))

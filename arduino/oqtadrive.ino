@@ -98,6 +98,8 @@
 	- _delay_us only takes compile time constants as argument
  */
 
+#define FIRMWARE_VERSION 21
+
 // Change this to true for a calibration run. When not connecting the adapter to
 // an Interface 1/QL during calibration, choose the desired interface via the
 // force settings below.
@@ -1007,7 +1009,7 @@ void daemonSync() {
 		daemonCmd((uint8_t*)(IF1 ? IF1_HELLO : QL_HELLO));
 
 		if (daemonRcvAck(10, 100, (uint8_t*)DAEMON_HELLO)) {
-			daemonCmdArgs(CMD_VERSION, PROTOCOL_VERSION, 0, 0, 0);
+			daemonCmdArgs(CMD_VERSION, PROTOCOL_VERSION, FIRMWARE_VERSION, 0, 0);
 			daemonHWGroup();
 			lastPing = millis();
 			synced = true;

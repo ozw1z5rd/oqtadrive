@@ -49,6 +49,22 @@ func (s *Status) String() string {
 }
 
 //
+type Version struct {
+	Daemon          string `json:"daemon"`
+	AdapterProtocol string `json:"adapterProtocol"`
+	AdapterFirmware string `json:"adapterFirmware"`
+}
+
+//
+func (v *Version) String() string {
+	return fmt.Sprintf(
+		`daemon:     %s
+adapter:
+  protocol: %s
+  firmware: %s`, v.Daemon, v.AdapterProtocol, v.AdapterFirmware)
+}
+
+//
 type DriveMap struct {
 	Start  int  `json:"start"`
 	End    int  `json:"end"`

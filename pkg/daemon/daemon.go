@@ -292,6 +292,25 @@ func (d *Daemon) GetClient() string {
 	return client.UNKNOWN.String()
 }
 
+// GetAdapterVersion gets protocol & firmware versions of currently connected
+// adapter; FIXME: not atomic
+func (d *Daemon) GetAdapterVersion() (protocol, firmware string) {
+
+	protocol = "-"
+	firmware = "-"
+
+	if d.synced {
+		if d.conduit.vProtocol > -1 {
+			protocol = fmt.Sprintf("%d", d.conduit.vProtocol)
+		}
+		if d.conduit.vFirmware > -1 {
+			firmware = fmt.Sprintf("%d", d.conduit.vFirmware)
+		}
+	}
+
+	return
+}
+
 // GetStatus gets the status of cartridge at slot ix (1-based)
 func (d *Daemon) GetStatus(ix int) string {
 	start, end, _ := d.GetHardwareDrives()

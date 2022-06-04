@@ -66,6 +66,9 @@ type conduit struct {
 	hwGroupEnd    int
 	hwGroupLocked bool
 	//
+	vProtocol int
+	vFirmware int
+	//
 	sendBuf []byte
 }
 
@@ -99,6 +102,9 @@ func (c *conduit) close() error {
 
 //
 func (c *conduit) syncOnHello(d *Daemon) error {
+
+	c.vProtocol = -1
+	c.vFirmware = -1
 
 	log.Info("syncing with adapter")
 	hello := make([]byte, commandLength)
@@ -149,12 +155,16 @@ func (c *conduit) syncOnHello(d *Daemon) error {
 		return fmt.Errorf("adapter did not send protocol version: %v", cmd)
 	}
 
-	proto := cmd.arg(0)
-	if proto < MinProtocolVersion || proto > MaxProtocolVersion {
-		return fmt.Errorf("unsupported protocol version: %d", proto)
+	c.vProtocol = int(cmd.arg(0))
+	c.vFirmware = int(cmd.arg(1))
+
+	if c.vProtocol < MinProtocolVersion || c.vProtocol > MaxProtocolVersion {
+		return fmt.Errorf("unsupported protocol version: %d", c.vProtocol)
 	}
 
-	log.WithField("protocol version", proto).Info("synced")
+	log.WithFields(log.Fields{
+		"protocol version": c.vProtocol,
+		"firmware version": c.vFirmware}).Info("synced")
 	return nil
 }
 

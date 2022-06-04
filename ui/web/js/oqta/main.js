@@ -230,6 +230,7 @@ bt.onclick = function() {
 bt.disabled = true;
 
 //
+getVersion();
 setupSearch();
 setupConfig();
 subscribe();

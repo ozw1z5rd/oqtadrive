@@ -185,3 +185,18 @@ function putConfig(title, message, path) {
         err => console.log('error: ' + err)
     );
 }
+
+//
+function getVersion() {
+
+    fetch('/version', {
+        method: 'GET'
+    }).then(
+        response => response.text()
+    ).then(
+        data => {
+		    document.getElementById('versionLabel').innerHTML = data;
+    }).catch(
+        err => console.log('error: ' + err)
+    );
+}
