@@ -226,16 +226,15 @@ More <a href=http://blevesearch.com/docs/Query-String-Query/>details here</a>"><
                         <div class="row text-white-50 mt-3 mb-1" align="left">
                             <b>Rumble Level</b>
                         </div>
-                        <p align="left">If the adapter has a vibration motor fitted, you can set the rumble level here (0-255, 0 is off).</p>
+                        <p align="left">If the adapter has a vibration motor fitted, you can set the rumble level here.</p>
                         <div class="container features mt-3 mb-2">
                             <div class="form-group row">
                                 <div class="col-2">
                                     <label for="rumble-level" class="col-form-label">Level</label>
                                 </div>
-                                <div class="col-3">
-                                    <input type="number" class="form-control" id="rumble-level"></input>
+                                <div class="col-7 mt-2">
+                                    <input type="range" class="form-range" min="0" max="255" id="rumble-level">
                                 </div>
-                                <div class="col-4"></div>
                                 <div class="col-2">
                                     <button type="button" id="btRumbleSet" class="btn btn-outline-light"
                                         onclick="setRumbleLevel()">Set</button>

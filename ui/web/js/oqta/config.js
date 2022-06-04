@@ -164,7 +164,7 @@ function putDriveMapping(start, end) {
 function setRumbleLevel() {
     var l = document.getElementById('rumble-level').value;
     l = l < 0 ? 0 : l > 255 ? 255 : l;
-    putConfig("Please wait", "Setting rumble level...",
+    putConfig("Please wait", `Setting rumble level to ${l}...`,
         `/config?item=rumble&arg1=${l}`);
 }
 
