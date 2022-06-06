@@ -35,9 +35,9 @@ func NewConfig() *Config {
 		"config [-a|--address {address}] [-r|--rumble {level}]",
 		"change configuration of daemon & adapter",
 		`
-Use the config command to change settings in the daemon and/or adapter. Currently,
-these configuration changes are not persisted, and will be reverted once the daemon
-or adapter restarts.`,
+Use the config command to get and change settings in the daemon and/or adapter.
+To get a setting, pass '-1' as the value. Currently, configuration changes are
+not persisted, and will be reverted once the daemon or adapter restarts.`,
 		"", runnerHelpEpilogue, c.Run)
 
 	c.AddBaseSettings()
@@ -58,15 +58,15 @@ func (c *Config) Run() error {
 
 	c.ParseSettings()
 
-	if c.Rumble == -1 {
-		fmt.Println("\nnothing to configure")
-		return nil
+	method := "GET"
+	url := fmt.Sprintf("/config?item=%s", daemon.CmdConfigItemRumble)
+
+	if c.Rumble > -1 {
+		method = "PUT"
+		url = fmt.Sprintf("%s&arg1=%d", url, byte(c.Rumble))
 	}
 
-	resp, err := c.apiCall("PUT",
-		fmt.Sprintf("/config?item=%s&arg1=%d",
-			daemon.CmdConfigItemRumble, byte(c.Rumble)),
-		false, nil)
+	resp, err := c.apiCall(method, url, false, nil)
 
 	if err != nil {
 		return err

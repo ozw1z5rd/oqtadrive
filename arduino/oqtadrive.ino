@@ -1009,7 +1009,11 @@ void daemonSync() {
 		daemonCmd((uint8_t*)(IF1 ? IF1_HELLO : QL_HELLO));
 
 		if (daemonRcvAck(10, 100, (uint8_t*)DAEMON_HELLO)) {
-			daemonCmdArgs(CMD_VERSION, PROTOCOL_VERSION, FIRMWARE_VERSION, 0, 0);
+			// send protocol & firmware version
+			daemonCmdArgs(CMD_VERSION, PROTOCOL_VERSION, FIRMWARE_VERSION, 1, 0);
+			// send config
+			daemonCmdArgs(CMD_CONFIG, CMD_CONFIG_RUMBLE, rumbleLevel, 0, 0);
+			// send h/w drive setup
 			daemonHWGroup();
 			lastPing = millis();
 			synced = true;

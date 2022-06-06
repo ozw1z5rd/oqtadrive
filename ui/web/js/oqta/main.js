@@ -231,6 +231,7 @@ bt.disabled = true;
 
 //
 getVersion();
+getRumbleLevel();
 setupSearch();
 setupConfig();
 subscribe();

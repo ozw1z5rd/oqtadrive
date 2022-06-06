@@ -161,11 +161,44 @@ function putDriveMapping(start, end) {
 }
 
 //
+function getRumbleLevel() {
+    getConfig('/config?item=rumble', function(data) {
+        var r = document.getElementById('rumble-level');
+        var b = document.getElementById('btRumbleSet');
+        var l = data.rumble;
+        if (l == null) {
+            b.disabled = true;
+            r.disabled = true;
+        } else {
+            b.disabled = false;
+            r.disabled = false;
+            r.value = l;
+        }
+    });
+}
+
+//
 function setRumbleLevel() {
     var l = document.getElementById('rumble-level').value;
     l = l < 0 ? 0 : l > 255 ? 255 : l;
     putConfig("Please wait", `Setting rumble level to ${l}...`,
         `/config?item=rumble&arg1=${l}`);
+}
+
+//
+function getConfig(path, callback) {
+    fetch(path, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(
+        response => response.json()
+    ).then(
+        data => {
+            callback(data);
+    }).catch(
+        err => console.log('error: ' + err)
+    );
 }
 
 //
@@ -195,7 +228,7 @@ function getVersion() {
         response => response.text()
     ).then(
         data => {
-		    document.getElementById('versionLabel').innerHTML = data;
+            document.getElementById('versionLabel').innerHTML = data;
     }).catch(
         err => console.log('error: ' + err)
     );

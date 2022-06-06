@@ -21,11 +21,29 @@
 package control
 
 import (
+	"fmt"
 	"net/http"
 )
 
 //
-func (a *api) config(w http.ResponseWriter, req *http.Request) {
+func (a *api) getConfig(w http.ResponseWriter, req *http.Request) {
+
+	item := getArg(req, "item")
+	conf, err := a.daemon.GetConfig(item)
+	if handleError(err, http.StatusUnprocessableEntity, w) {
+		return
+	}
+
+	if wantsJSON(req) {
+		sendJSONReply(map[string]interface{}{item: conf}, http.StatusOK, w)
+		return
+	}
+
+	sendReply([]byte(fmt.Sprintf("%v", conf)), http.StatusOK, w)
+}
+
+//
+func (a *api) setConfig(w http.ResponseWriter, req *http.Request) {
 
 	arg1, err := getIntArg(req, "arg1", -1)
 	if handleError(err, http.StatusUnprocessableEntity, w) {
@@ -38,7 +56,7 @@ func (a *api) config(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if handleError(
-		a.daemon.Configure(getArg(req, "item"), byte(arg1), byte(arg2)),
+		a.daemon.SetConfig(getArg(req, "item"), byte(arg1), byte(arg2)),
 		http.StatusUnprocessableEntity, w) {
 		return
 	}

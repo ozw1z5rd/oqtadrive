@@ -66,6 +66,8 @@ type conduit struct {
 	hwGroupEnd    int
 	hwGroupLocked bool
 	//
+	rumbleLevel byte
+	//
 	vProtocol int
 	vFirmware int
 	//
@@ -157,7 +159,6 @@ func (c *conduit) syncOnHello(d *Daemon) error {
 
 	c.vProtocol = int(cmd.arg(0))
 	c.vFirmware = int(cmd.arg(1))
-
 	if c.vProtocol < MinProtocolVersion || c.vProtocol > MaxProtocolVersion {
 		return fmt.Errorf("unsupported protocol version: %d", c.vProtocol)
 	}
@@ -165,6 +166,26 @@ func (c *conduit) syncOnHello(d *Daemon) error {
 	log.WithFields(log.Fields{
 		"protocol version": c.vProtocol,
 		"firmware version": c.vFirmware}).Info("synced")
+
+	// FIXME move into separate method
+	log.Info("getting config")
+	configItemCount := int(cmd.arg(2))
+	for ix := 0; ix < configItemCount; ix++ {
+		if cmd, err = c.receiveCommand(); err != nil {
+			return fmt.Errorf("error receiving config item: %v", err)
+		}
+		if cmd.cmd() != CmdConfig {
+			return fmt.Errorf("adapter did not send config item: %v", cmd)
+		}
+		switch cmd.arg(0) {
+		case CmdConfigRumble:
+			c.rumbleLevel = cmd.arg(1)
+			log.WithField("rumble level", cmd.arg(1)).Info("got config item")
+		default:
+			log.WithField("item", cmd.arg(0)).Error("unknown config item")
+		}
+	}
+
 	return nil
 }
 

@@ -79,9 +79,9 @@ func (a *api) Serve() error {
 	addRoute(router, "map", "PUT", "/map", a.setDriveMap)
 	addRoute(router, "drivels", "GET", "/drive/{drive:[1-8]}/list", a.driveList)
 	addRoute(router, "resync", "PUT", "/resync", a.resync)
-	addRoute(router, "config", "PUT", "/config", a.config)
+	addRoute(router, "config", "GET", "/config", a.getConfig)
+	addRoute(router, "config", "PUT", "/config", a.setConfig)
 	addRoute(router, "search", "GET", "/search", a.search)
-	addRoute(router, "upgrade", "PUT", "/upgrade", a.upgrade)
 	addRoute(router, "version", "GET", "/version", a.version)
 
 	router.PathPrefix("/").Handler(

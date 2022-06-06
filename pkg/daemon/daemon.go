@@ -432,9 +432,26 @@ func (d *Daemon) Resync(cl client.Client, reset bool) error {
 }
 
 //
-func (d *Daemon) Configure(item string, arg1, arg2 byte) error {
+func (d *Daemon) GetConfig(item string) (interface{}, error) {
+
+	if !d.synced {
+		return nil, nil
+	}
+
+	switch item {
+
+	case CmdConfigItemRumble:
+		return d.conduit.rumbleLevel, nil
+	}
+
+	return nil, fmt.Errorf("illegal config item: %s", item)
+}
+
+//
+func (d *Daemon) SetConfig(item string, arg1, arg2 byte) error {
 
 	var code byte
+	set := func() {}
 
 	switch item {
 
@@ -444,6 +461,7 @@ func (d *Daemon) Configure(item string, arg1, arg2 byte) error {
 				arg1, CmdConfigRumbleMin, CmdConfigRumbleMax)
 		}
 		code = CmdConfigRumble
+		set = func() { d.conduit.rumbleLevel = arg1 }
 
 	default:
 		return fmt.Errorf("illegal config item: %s", item)
@@ -451,7 +469,11 @@ func (d *Daemon) Configure(item string, arg1, arg2 byte) error {
 
 	return d.queueControl(func() error {
 		if d.synced {
-			return d.conduit.send([]byte{CmdConfig, code, arg1, arg2})
+			err := d.conduit.send([]byte{CmdConfig, code, arg1, arg2})
+			if err == nil {
+				set()
+			}
+			return err
 		}
 		return fmt.Errorf("not synced with adapter")
 	})
