@@ -134,7 +134,7 @@ So far I have built *OqtaDrives* with *Arduino Nano* and *Arduino Pro Mini* boar
 ## Installing
 After building the adapter, the software needs to be installed. This comprises two separate tasks:
 
-- Flashing the firmware onto the *Arduino* - For this you can use for example the [*Arduino* IDE](https://www.arduino.cc/en/software).
+- Flashing the firmware onto the *Arduino* - For this you can use for example the [*Arduino* IDE](https://www.arduino.cc/en/software). If you're using *Linux* and have *Docker* installed, you can also use the `firmware` target of the project's `Makefile`. This will automatically build a container image with the *Arduino CLI* and all needed dependencies, and use that to build and/or upload the firmware, so you don't have to install the IDE. Run `make` in the project root to get instructions.
 
 - Copying the `oqtactl` binary - This is a single binary, which takes care of everything that needs to be done on the daemon host side. It can also be used to control the daemon, on the same host or over the network. In the *release* section of this project, there are binaries for *Linux*, *MacOS* and *Windows*, available for different architectures. Download, extract, and copy the appropriate binary onto the daemon host and any other system from which you want to use it. If you want to enable the *OqtaDrive* web UI, you also need to extract the content of the `ui.zip` archive from the *release* section, and place it alongside the `oqtactl` binary on the daemon host.
 

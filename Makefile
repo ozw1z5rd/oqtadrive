@@ -26,12 +26,15 @@ OQTADRIVE_RELEASE = 0.2.6-devel
 OQTADRIVE_VERSION := $(shell git describe --always --tag --dirty)
 
 ROOT = $(shell pwd)
+SKETCH_DIR := $(ROOT)/arduino
+SKETCH := $(SKETCH_DIR)/oqtadrive.ino
 BUILD_OUTPUT = _build
 BINARIES = $(BUILD_OUTPUT)/bin
 ISOLATED_PKG = $(BUILD_OUTPUT)/pkg
 ISOLATED_CACHE = $(BUILD_OUTPUT)/cache
 UI_BASE = $(ROOT)/ui/web
 
+ARDUINO_CLI_IMAGE = xelalex/oqtadrive-arduino-cli
 GO_IMAGE = golang:1.18.1-buster@sha256:f1e97d64a50f4c2b4fa61211f5206e636a54f992a047d192d6d068fbcd1946c3
 JSMINIFY_IMAGE = tdewolff/minify@sha256:946e1146b79c3299626893f163e247ccd2bb4f1646e4537f1b0623bcd2023c33
 
@@ -65,6 +68,17 @@ else
     CACHE_VOLS = -v $(GOPATH)/pkg:/go/pkg -v /home/$(USER)/.cache:/.cache
 endif
 
+PORT ?=
+ifeq ($(PORT),)
+	ARDUINO_CLI_ARGS = --clean --verify
+	TTY_VOL =
+else
+	ARDUINO_CLI_ARGS = --clean --upload --port $(PORT)
+	TTY_VOL = -v $(PORT):$(PORT)
+endif
+
+FQBN ?= arduino:avr:nano
+
 export
 
 #
@@ -85,9 +99,33 @@ run:
 	go run cmd/oqtad/main.go serve --device=$(DEVICE)
 
 
+.PHONY: imgarduino
+imgarduino:
+#	build the ${ITL}Arduino CLI${NRM} image required for compiling adapter firmware
+#
+ifeq ($(shell docker images --digests --quiet $(ARDUINO_CLI_IMAGE)),)
+	echo "building Arduino CLI image..."
+	docker build -t $(ARDUINO_CLI_IMAGE) -f ./hack/arduino-cli.Dockerfile .
+	echo "image build done"
+endif
+
+
+.PHONY: firmware
+firmware: imgarduino
+#	compile the adapter firmware; set ${DIM}FQBN${NRM} to select board type (defaults to ${DIM}arduino:avr:nano${NRM});
+#	set ${DIM}PORT${NRM} to port of connected adapter to actually upload instead of just compiling, e.g.:
+# 
+#	    ${DIM}FQBN=arduino:avr:pro PORT=/dev/ttyUSB0 make firmware${NRM}
+#
+	docker run --rm -ti --privileged -v "$(SKETCH_DIR):/oqtadrive/oqtadrive" \
+		$(TTY_VOL) $(ARDUINO_CLI_IMAGE) \
+		./arduino/arduino-cli compile $(ARDUINO_CLI_ARGS) \
+			--fqbn $(FQBN) /oqtadrive/oqtadrive
+
+
 .PHONY: build
 build: prep ui
-#	build the binary and pack UI artifacts
+#	build the ${DIM}oqtactl${NRM} binary and pack UI artifacts
 #
 	rm -f $(BINARIES)/oqtactl
 	$(call utils, build_binary oqtactl linux amd64 keep)
