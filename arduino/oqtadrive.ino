@@ -214,7 +214,7 @@ volatile bool calibration = false; // use the define setting at top to turn on!
 volatile bool synced      = false;
 
 // --- daemon commands --------------------------------------------------------
-const uint8_t PROTOCOL_VERSION = 3;
+const uint8_t PROTOCOL_VERSION = 4;
 
 const char CMD_HELLO   = 'h';
 const char CMD_VERSION = 'v';
