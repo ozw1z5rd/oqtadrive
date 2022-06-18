@@ -23,23 +23,43 @@ package control
 import (
 	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/xelalexv/oqtadrive/pkg/daemon"
 )
 
 //
 func (a *api) getConfig(w http.ResponseWriter, req *http.Request) {
 
-	item := getArg(req, "item")
-	conf, err := a.daemon.GetConfig(item)
-	if handleError(err, http.StatusUnprocessableEntity, w) {
-		return
+	var items []string
+
+	if i := getArg(req, "item"); i != "" {
+		items = append(items, i)
+	} else {
+		// add all currently used config items here
+		items = append(items, daemon.CmdConfigItemRumble)
+	}
+
+	configs := make(map[string]interface{})
+
+	for _, i := range items {
+		conf, err := a.daemon.GetConfig(i)
+		if handleError(err, http.StatusUnprocessableEntity, w) {
+			return
+		}
+		configs[i] = conf
 	}
 
 	if wantsJSON(req) {
-		sendJSONReply(map[string]interface{}{item: conf}, http.StatusOK, w)
+		sendJSONReply(configs, http.StatusOK, w)
 		return
 	}
 
-	sendReply([]byte(fmt.Sprintf("%v", conf)), http.StatusOK, w)
+	var buf strings.Builder
+	for k, v := range configs {
+		fmt.Fprintf(&buf, "%s = %v", k, v)
+	}
+	sendReply([]byte(buf.String()), http.StatusOK, w)
 }
 
 //
