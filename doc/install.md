@@ -59,6 +59,8 @@ curl -fsSL https://github.com/xelalexv/oqtadrive/raw/master/hack/Makefile -o Mak
 PORT=/dev/ttyS0 make install patch_avrdude flash service_on
 ```
 
+*Note*: If in your setup, the *Arduino* board is connected via USB, drop `patch_avrdude` (details below).
+
 ### The Long Version
 And here's the same with a bit more background information:
 
@@ -81,6 +83,8 @@ And here's the same with a bit more background information:
 - *Optional*: In our *RaspberryPi* setup, the serial connection between *Arduino* and *Pi* is done via GPIO pins, not USB. This requires applying a small patch to the *avrdude* flash program ([details](https://siytek.com/raspberry-pi-gpio-arduino/)). This only has to be run once: 
 
     `make patch_avrdude`
+
+    If in your setup, the *Arduino* board is connected via USB, you can skip this.
 
 - Now we're ready to compile & flash the firmware. Note that for this step it's important to specify the serial port device to which the adapter is connected. For the *Pi*, that's `/dev/ttyS0`. Compiling and flashing can again take quite a bit:
 
