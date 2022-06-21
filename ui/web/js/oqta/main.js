@@ -231,6 +231,7 @@ bt.disabled = true;
 
 //
 getVersion();
+getDriveMapping();
 getRumbleLevel();
 setupSearch();
 setupConfig();
