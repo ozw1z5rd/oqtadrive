@@ -1,5 +1,22 @@
 # Change Log
 
+## 0.3.0
+This release requires re-flashing the adapter. Protocol version is now at `4`.
+
+### Overall
+- added `make` target for compiling adapter firmware
+- misc. refactorings
+- switched to *Go* 1.18
+- doc updates
+
+### Adapter
+- support retrieval of firmware version info and config settings
+
+### Daemon / `oqtactl`
+- added config tab to web UI with drive mapping & rumble level
+- added daemon & adapter version info, also shown in web UI
+- report config items at adapter sync, support config get
+
 ## 0.2.5
 This release does not require re-flashing the adapter. There were no changes to the firmware.
 
