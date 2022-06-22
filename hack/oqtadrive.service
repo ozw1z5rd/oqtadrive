@@ -3,12 +3,14 @@ Description=OqtaDrive Daemon
 After=local-fs.target sysinit.target
 
 [Service]
+Environment=LOG_LEVEL=info
 ExecStart=/home/someone/oqtactl serve -d /dev/ttyUSB0
 WorkingDirectory=/home/someone
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
 User=someone
+KillMode=process
 
 [Install]
 WantedBy=multi-user.target

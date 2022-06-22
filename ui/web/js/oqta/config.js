@@ -122,7 +122,10 @@ function setDriveMapping() {
 
     if (start.value != '-') {
         userConfirm("Enable hardware drives",
-            "Specifying the wrong number of hardware drives will cause problems. If you set too many, you will block virtual drives, if you set too few, the excess hardware drives will conflict with virtual drives, causing bus contention. Proceed?",
+            `Specifying the wrong number of hardware drives will cause problems.
+             If you set too many, you will block virtual drives, if you set too
+             few, the excess hardware drives will conflict with virtual drives,
+             causing bus contention. Proceed?`,
             function(confirmed) {
                 if (confirmed) {
                     putDriveMapping(start.value, end.value);
@@ -266,6 +269,41 @@ function getVersion() {
     ).then(
         data => {
             document.getElementById('versionLabel').innerHTML = data;
+    }).catch(
+        err => console.log('error: ' + err)
+    );
+}
+
+//
+function upgrade() {
+    userConfirm("Upgrade",
+        `This will install the latest release and re-flash the adapter. If the
+         latest release is already present, it is re-installed. During the
+         upgrade, the OqtaDrive daemon will temporarily stop and the web UI be
+         unresponsive. Proceed?`,
+        function(confirmed) {
+            if (confirmed) {
+                doUpgrade();
+            }
+        });
+}
+
+//
+function doUpgrade() {
+
+    var url = '/upgrade';
+    var buildURL = document.getElementById('build-url').value;
+    if (buildURL != '') {
+        url += '?build_url=' + encodeURIComponent(buildURL);
+    }
+
+    fetch(url, {
+        method: 'POST'
+    }).then(
+        response => response.text()
+    ).then(
+        data => {
+            userAlert("Upgrade", data);
     }).catch(
         err => console.log('error: ' + err)
     );

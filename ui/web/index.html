@@ -247,6 +247,21 @@ More <a href=http://blevesearch.com/docs/Query-String-Query/>details here</a>"><
                         <div class="container features" align="left">
                             <pre align="left" id="versionLabel"></pre>
                         </div>
+                        <div class="container features mt-3 mb-2">
+                            <div class="form-group row">
+                                <div class="col-2">
+                                    <label for="build-url" class="col-form-label">Source</label>
+                                </div>
+                                <div class="col-7">
+                                    <input type="text" class="form-control" id="build-url"
+                                        placeholder="leave empty for GitHub">
+                                </div>
+                                <div class="col-3">
+                                    <button type="button" id="btUpgrade" class="btn btn-outline-light"
+                                        onclick="upgrade()">Upgrade</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="tab-pane fade mt-2" id="about" role="tabpanel"

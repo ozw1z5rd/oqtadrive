@@ -196,12 +196,19 @@ function download_oqtactl {
         return 1
     fi
 
+    mv -f "${OQTACTL}" "${OQTACTL}.bak"
+
     echo "  from ${url}"
-    curl -fsSL "${url}" -o oqtactl.zip
-    unzip -o oqtactl.zip
-    rm oqtactl.zip
-    chmod +x oqtactl
-    mv oqtactl "${OQTACTL}"
+    curl -fsSL "${url}" -o oqtactl.zip && \
+        unzip -o oqtactl.zip && \
+        rm oqtactl.zip && \
+        chmod +x oqtactl && \
+        mv oqtactl "${OQTACTL}" && \
+        return 0
+
+    echo "Download failed!" >&2
+    mv -f "${OQTACTL}.bak" "${OQTACTL}"
+    return 1
 }
 
 #
@@ -225,12 +232,19 @@ function download_ui {
         return
     fi
 
+    mv -f "${ROOT}/ui" "${ROOT}/ui.bak"
+
     echo "  from ${url}"
-    curl -fsSL "${url}" -o ui.zip
-    rm -rf ui "${ROOT}/ui"
-    unzip ui.zip
-    rm ui.zip
-    mv ui "${ROOT}/ui"
+    curl -fsSL "${url}" -o ui.zip && \
+        rm -rf ui "${ROOT}/ui" && \
+        unzip ui.zip && \
+        rm ui.zip && \
+        mv ui "${ROOT}/ui" && \
+        return 0
+
+    echo "Download failed!" >&2
+    mv -f "${ROOT}/ui.bak" "${ROOT}/ui"
+    return 1
 }
 
 #
@@ -248,8 +262,13 @@ function download_firmware {
         url="${BUILD_URL}/oqtadrive.ino"
     fi
 
+    mv -f "${SKETCH}.org" "${SKETCH}.org.bak"
     echo "  from ${url}"
-    curl -fsSL  -o "${SKETCH}.org" "${url}"
+    curl -fsSL -o "${SKETCH}.org" "${url}" && return 0
+
+    echo "Download failed!" >&2
+    mv -f "${SKETCH}.org.bak" "${SKETCH}.org"
+    return 1
 }
 
 #
@@ -382,6 +401,7 @@ function manage_service {
                     | sed -E -e "s;^ExecStart=.*$;ExecStart=${OQTACTL} serve -d ${PORT} ${extra_args};g" \
                           -e "s;^WorkingDirectory=.*$;WorkingDirectory=${ROOT};g" \
                           -e "s;^User=.*$;User=${USER};g" \
+                          -e "s;^Environment=.*$;Environment=LOG_LEVEL=info PORT=${PORT} OLD_NANO=${OLD_NANO} RESET_PIN=${RESET_PIN} FQBN=${FQBN};g" \
                     | sudo tee /etc/systemd/system/oqtadrive.service > /dev/null
                 sudo systemctl daemon-reload
                 ;;
