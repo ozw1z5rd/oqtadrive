@@ -169,11 +169,13 @@ function getRumbleLevel() {
         if (l == null) {
             b.disabled = true;
             r.disabled = true;
+            r.value = 0;
         } else {
             b.disabled = false;
             r.disabled = false;
             r.value = l;
         }
+        setRumbleHint();
     });
 }
 
@@ -183,6 +185,41 @@ function setRumbleLevel() {
     l = l < 0 ? 0 : l > 255 ? 255 : l;
     putConfig("Please wait", `Setting rumble level to ${l}...`,
         `/config?item=rumble&arg1=${l}`);
+}
+
+//
+function setRumbleHint() {
+
+    var rl = document.getElementById('rumble-level');
+    var rh = document.getElementById('rumble-hint');
+
+    if (rl.disabled) {
+        rh.innerHTML = "-";
+        return;
+    }
+
+    var v = rl.value;
+    var h = "off";
+
+    if (v > 200) {
+        h = "insane";
+    } else if (v > 160) {
+        h = "ludicrous";
+    } else if (v > 110) {
+        h = "ridiculous";
+    } else if (v > 70) {
+        h = "noisy";
+    } else if (v > 45) {
+        h = "assertive";
+    } else if (v > 30) {
+        h = "mellow";
+    } else if (v > 20) {
+        h = "quiet";
+    } else if (v > 0) {
+        h = "faint";
+    }
+
+    rh.innerHTML = `${v} - ${h}`;
 }
 
 //
