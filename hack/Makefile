@@ -159,6 +159,11 @@ service_off: sanity
 	$(call utils, manage_service stop disable remove)
 
 
+.PHONY: can_upgrade
+can_upgrade: #
+	true
+
+
 .PHONY: upgrade
 upgrade: get_oqtactl get_ui get_firmware flash
 #	get ${DIM}oqtactl${NRM} binary and firmware & upload to adapter
@@ -176,6 +181,8 @@ flash: sanity
 	[[ ! -f "$(SKETCH_DIR)/config.h" ]] \
 		|| echo -e '#include "config.h"\n' > "$(SKETCH)"
 	cat "$(SKETCH).org" >> "$(SKETCH)"
+	echo "port: $(PORT), FQBN: $(FQBN)"
+	# FIXME: what to do if flashing of new firmware fails? need to roll back
 	"$(ARDUINO_CLI)" compile --clean --verify --upload --port $(PORT) \
 		--fqbn $(FQBN) "$(SKETCH)"
 	$(call utils, manage_service start)
