@@ -22,7 +22,7 @@
 SHELL = /bin/bash
 
 REPO = oqtadrive
-OQTADRIVE_RELEASE = 0.3.0
+OQTADRIVE_RELEASE = 0.3.1-devel
 OQTADRIVE_VERSION := $(shell git describe --always --tag --dirty)
 
 ROOT = $(shell pwd)
