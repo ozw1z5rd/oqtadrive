@@ -272,6 +272,74 @@ function download_firmware {
 }
 
 #
+# $1    file name with path, relative to project root
+# $2    `copy` to only create a copy with current version (optional), this is
+#       for example needed when upgrading this shell script, since replacing it
+#       while it is being used may cause errors; default is to replace file if
+#       more current version is available
+#
+function assure_current {
+
+    cd "${ROOT}" || { # when called from Makefile, we're in `hack`
+        echo "corrupted project structure" >&2
+        return 1
+    }
+
+    local ld
+    if ld="$(date --reference "$1" --utc --iso-8601=seconds 2>/dev/null)" \
+        && [[ -n "${ld}" ]]; then
+        # add 1 second, because `since` parameter in GitHub `commits` API is >=
+        # also maintain as UTC and keep format expected by API
+        ld="$(date --date="${ld} +1 seconds" --utc --iso-8601=seconds \
+            | cut -d '+' -f 1)Z"
+    else
+        ld="1970-01-01T01:00:00Z"
+    fi
+
+    local commits
+    if ! commits="$(github_api_call \
+            "commits?path=$1&since=${ld}&sha=${BRANCH}&page=1&per_page=1")"; then
+        echo "cannot determine latest commit" >&2
+        return 1
+    fi
+
+    local len
+    if ! len="$(echo "${commits}" | jq -r '. | length')"; then
+        echo "invalid commit reply from GitHub" >&2
+        return 1
+    fi
+
+    if [[ ${len} -gt 0 ]]; then
+
+        local rd
+        if ! rd="$(echo "${commits}" | jq -r '.[0].commit.committer.date')" \
+            || [[ -z "${rd}" ]]; then
+            rd="$(date)"
+        fi
+
+        echo -e "$1 needs update (local date: ${ld}, remote date: ${rd}) ..."
+
+        local dir
+        dir="$(dirname "$1")"
+        [[ -z "${dir}" ]] || mkdir -p "${dir}"
+
+        local current="$1.current"
+        if curl -fsSL -o "${current}" "${BASE_URL}/${BRANCH}/$1"; then
+            # set to date of commit, but note that rd is in UTC, so we need to
+            # convert to local time
+            touch --date="$(date --date="${rd}")" "${current}"
+            chmod +x "${current}"
+            [[ $# -gt 1 && "$2" == "copy" ]] || mv -f "${current}" "$1"
+            echo "$1 updated"
+        else
+            echo "download of $1 failed" >&2
+            rm -f "${current}"
+            return 1
+        fi
+    fi
+}
+
+#
 # $1    filter
 #
 function get_asset_url {

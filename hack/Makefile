@@ -266,13 +266,33 @@ prereqs: #
 
 
 .PHONY: prep
-prep: hack/devenvutil.sh prereqs
+prep: current prereqs #
+
+
+.PHONY: current
+current: hack/devenvutil.sh
+	echo -e "\nensuring devenvutils are up to date"
+	$(call utils, assure_current hack/devenvutil.sh copy)
+	[[ ! -f hack/devenvutil.sh.current ]] \
+		|| mv -f hack/devenvutil.sh.current hack/devenvutil.sh
 
 
 hack/devenvutil.sh:
 	mkdir -p hack
 	curl -fsSL -o hack/devenvutil.sh "$(BASE_URL)/$(BRANCH)/hack/devenvutil.sh"
 	chmod +x hack/devenvutil.sh
+
+
+.PHONY: Makefile
+Makefile: hack/devenvutil.sh
+	echo -e "\nensuring Makefile is up to date"
+	cp -af Makefile hack/Makefile
+	$(call utils, assure_current hack/Makefile)
+	if [[ hack/Makefile -nt Makefile ]]; then \
+		mv -f hack/Makefile Makefile; \
+	else \
+		rm -f hack/Makefile; \
+	fi
 
 
 #
