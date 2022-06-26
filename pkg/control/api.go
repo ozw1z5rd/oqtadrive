@@ -82,6 +82,7 @@ func (a *api) Serve() error {
 	addRoute(router, "config", "GET", "/config", a.getConfig)
 	addRoute(router, "config", "PUT", "/config", a.setConfig)
 	addRoute(router, "search", "GET", "/search", a.search)
+	addRoute(router, "upgrade", "POST", "/upgrade", a.upgrade)
 	addRoute(router, "version", "GET", "/version", a.version)
 
 	router.PathPrefix("/").Handler(
