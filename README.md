@@ -127,6 +127,9 @@ Cons:
 
 - requires an additional edge connector (plug) for connecting hardware *Microdrive* units; alternatively, the adapter can be installed into an *Interface 1* or *QL*, but cannot be used with other machines in that case
 
+#### Notes
+
+- When removing an internal *Microdrive* unit from a *QL*, don't forget to bridge pins 1 (`COMMS_IN`) and 2 (`COMMS_OUT`) in the corresponding *Microdrive* socket on the PCB. Otherwise, the `COMMS` signal won't reach the upstream drive and/or edge connector, and the drive daisy chain is broken.
 
 ### Using a Different *Arduino* Board
 So far I have built *OqtaDrives* with *Arduino Nano* and *Arduino Pro Mini* boards (cheap compatible clones). It may work with other *Arduino* boards, but only if they use the same micro-controller (*ATMega328P*) running at the same clock speed (16MHz). There are timing-sensitive sections in the code that would otherwise require tweaking. Also, stick to the GPIO pin assignments, the code relies on this.
