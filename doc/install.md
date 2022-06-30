@@ -53,7 +53,7 @@ All steps in this section are performed on the target system, i.e. the *Raspberr
 For the impatient, here are all the steps that you would perform on the *Pi* setup after you installed the OS:
 
 ```
-sudo apt install curl jq gawk
+sudo apt install curl jq gawk strace gpiod
 cd
 curl -fsSL https://github.com/xelalexv/oqtadrive/raw/master/hack/Makefile -o Makefile
 PORT=/dev/ttyS0 make install patch_avrdude flash service_on
@@ -64,7 +64,7 @@ PORT=/dev/ttyS0 make install patch_avrdude flash service_on
 ### The Long Version
 And here's the same with a bit more background information:
 
-- Install the *curl*, *jq*, and *gawk* OS packages, if they're not present. E.g. on *Debian* based systems such as *RasberryPi OS*, run:
+- Install the *curl*, *jq*, *gawk*, *strace*, and *gpiod* OS packages, if they're not present. E.g. on *Debian* based systems such as *RasberryPi OS*, run:
 
     `sudo apt install curl jq gawk`
 

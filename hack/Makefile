@@ -56,8 +56,12 @@ ROOT = $(shell pwd)
 #	${ITL}PORT${NRM}		serial port device to use when uploading; defaults to
 #			${DIM}/dev/ttyUSB0${NRM}
 #
-#	${ITL}RESET_PIN${NRM}	reset pin number to uses when adapter is connected via
-#			GPIOs rather than USB; defaults to pin 18
+#	${ITL}RESET_PIN${NRM}	reset pin number to use when adapter is connected via
+#			GPIOs rather than USB; note that the pin numbering is
+#			the one used by ${DIM}gpioset${NRM} and friends from the ${ITL}gpiod${NRM}
+#			package, on a ${ITL}RaspberryPi${NRM} that's identical to the
+#			number in the pin name, but may differ on other boards,
+#			use ${DIM}gpioinfo${NRM} to find out; defaults to ${DIM}18${NRM}
 #
 #	${ITL}OLD_NANO=y${NRM}	set this when using a ${ITL}Nano${NRM} board with old boot loader
 #			(sets ${ITL}FQBN${NRM} to ${DIM}arduino:avr:nano:cpu=atmega328old${NRM})
@@ -165,7 +169,7 @@ can_upgrade: #
 
 
 .PHONY: upgrade
-upgrade: get_oqtactl get_ui get_firmware flash
+upgrade: current get_oqtactl get_ui get_firmware flash
 #	get ${DIM}oqtactl${NRM} binary and firmware & upload to adapter
 #
 
@@ -256,35 +260,27 @@ endif
 
 
 .PHONY: sanity
-sanity: prep prereqs #
+sanity: prereqs #
 	$(call utils, sanity)
 
 
 .PHONY: prereqs
-prereqs: #
-	$(call utils, prereqs jq gawk)
+prereqs: hack/devenvutil.sh #
+	$(call utils, prereqs jq gawk strace gpioinfo)
 
 
-.PHONY: prep
-prep: current prereqs #
-
-
-.PHONY: current # FIXME only check when doing upgrade
+.PHONY: current
 current: hack/devenvutil.sh
+#	make sure this Makefile and its tooling is at latest version
+#
 	echo -e "\nensuring devenvutils are up to date"
 	$(call utils, assure_current hack/devenvutil.sh copy)
 	[[ ! -f hack/devenvutil.sh.current ]] \
 		|| mv -f hack/devenvutil.sh.current hack/devenvutil.sh
 
 
-hack/devenvutil.sh:
-	mkdir -p hack
-	curl -fsSL -o hack/devenvutil.sh "$(BASE_URL)/$(BRANCH)/hack/devenvutil.sh"
-	chmod +x hack/devenvutil.sh
-
-
 .PHONY: Makefile
-Makefile: hack/devenvutil.sh
+Makefile: hack/devenvutil.sh #
 	echo -e "\nensuring Makefile is up to date"
 	cp -af Makefile hack/Makefile
 	$(call utils, assure_current hack/Makefile)
@@ -293,6 +289,12 @@ Makefile: hack/devenvutil.sh
 	else \
 		rm -f hack/Makefile; \
 	fi
+
+
+hack/devenvutil.sh:
+	mkdir -p hack
+	curl -fsSL -o hack/devenvutil.sh "$(BASE_URL)/$(BRANCH)/hack/devenvutil.sh"
+	chmod +x hack/devenvutil.sh
 
 
 #

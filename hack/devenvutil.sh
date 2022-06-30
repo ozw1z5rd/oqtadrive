@@ -54,7 +54,7 @@ function synopsis {
     echo -e "\n${BLD}TARGETS${NRM}"
     print_sorted_help "$(cat "${files[@]}" \
         | gawk '{FS=":"}
-            /^[a-zA-Z0-9][-a-zA-Z0-9_\.]+:{1,2}[-a-zA-Z0-9_\. ]*$/{f=1; printf "\n${ITL}${BLD}%s${NRM}\n", $1; next}
+            /^[a-zA-Z0-9][-a-zA-Z0-9_\.]+:{1,2}[-a-zA-Z0-9_\. \/]*$/{f=1; printf "\n${ITL}${BLD}%s${NRM}\n", $1; next}
             /^[^#].*$/{f=0} f' \
         | tr -d '#')"
 
@@ -453,13 +453,11 @@ function patch_avrdude {
 
     local autoreset="${dir}/autoreset"
     curl -fsSL -o "${autoreset}" "${BASE_URL}/${BRANCH}/hack/autoreset"
-    sed -Ei "s/^pin[[:space:]]*=[[:space:]]*[0-9]+$/pin = ${RESET_PIN}/g" \
-        "${autoreset}"
     chmod +x "${autoreset}"
 
     cat <<EOF > "${avrdude}"
 #!/bin/sh
-sudo strace -o "|${autoreset}" -eioctl "${dir}/avrdude.org" \$@ 2>&1 | grep -vi "broken pipe"
+sudo --preserve-env strace -o "|${autoreset}" -eioctl "${dir}/avrdude.org" \$@ 2>&1 | grep -vi "broken pipe"
 EOF
     chmod +x "${avrdude}"
 }

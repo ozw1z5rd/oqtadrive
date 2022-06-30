@@ -1,54 +1,18 @@
-#!/usr/bin/python3
+#!/usr/bin/env bash
 
-#
-# This was retrieved from here:
-#
-#   https://raw.githubusercontent.com/Siytek/avrdude-rpi/master/autoreset
-#
+pin=${RESET_PIN:-18}
 
-import RPi.GPIO as GPIO
-import sys, os, re, time, fcntl
-import errno
+echo -e "\nautoreset: starting"
 
-fd = sys.stdin.fileno()
-fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+if timeout --preserve-status --foreground 5s \
+    grep --quiet --max-count=1 -E '.+TIOCM_DTR.+'; then
 
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BCM)
-dtr = re.compile('.+TIOCM_DTR.+')
-start = time.time()
-pin = 18
+    echo "autoreset: resetting using GPIO pin ${pin}..."
+    gpioset --mode time --usec 5000 gpiochip0 "${pin}=0"
+    gpioset --mode time --sec 1 gpiochip0 "${pin}=1"
 
-def reset():
-  print("autoreset: resetting using GPIO Pin " + str(pin))
-  GPIO.setup(pin, GPIO.OUT)
-  GPIO.output(pin, GPIO.HIGH)
-  time.sleep(0.32)
-  GPIO.output(pin, GPIO.LOW)
+else
+    echo "autoreset: timeout"
+fi
 
-def process():
-  while True:
-    try:
-      duration = time.time() - start
-      input = sys.stdin.readline().strip()
-      if input is None: # == "":
-        input = sys.stdin.readline().strip()
-      if dtr.match(input):
-        reset()
-        return
-      elif duration > 5000:
-        print("autoreset: timeout")
-        return
-    except Exception as e:
-      if hasattr(e, 'errno'):
-        if e.errno != 11: # Ignore resource unavailable
-          raise
-      else:
-        raise
-
-print("\nautoreset: starting")
-process()
-GPIO.cleanup()
-print("autoreset: done")
-exit
+echo "autoreset: done"
