@@ -56,6 +56,12 @@ ROOT = $(shell pwd)
 #	${ITL}PORT${NRM}		serial port device to use when uploading; defaults to
 #			${DIM}/dev/ttyUSB0${NRM}
 #
+#	${ITL}BAUD_RATE${NRM}	baud rate for serial port, in most cases there's no need
+#			to set this, currently only values accepted are ${DIM}500000${NRM}
+#			and ${DIM}1000000${NRM} (default); note that if you use this setting
+#			you need to set the same baud rate in the config header
+#			of the adapter firmware
+#
 #	${ITL}RESET_PIN${NRM}	reset pin number to use when adapter is connected via
 #			GPIOs rather than USB; note that the pin numbering is
 #			the one used by ${DIM}gpioset${NRM} and friends from the ${ITL}gpiod${NRM}
@@ -100,6 +106,7 @@ endif
 
 VERSION ?=
 PORT ?= /dev/ttyUSB0
+BAUD_RATE ?= 1000000
 RESET_PIN ?= 18
 SKIP_UI ?= n
 REPO ?=
@@ -266,7 +273,11 @@ sanity: prereqs #
 
 .PHONY: prereqs
 prereqs: hack/devenvutil.sh #
+ifeq ($(BUILD_ONLY),y)
+	$(call utils, prereqs jq gawk strace) # no gpiod in build container
+else
 	$(call utils, prereqs jq gawk strace gpioinfo)
+endif
 
 
 .PHONY: current
@@ -280,7 +291,7 @@ current: hack/devenvutil.sh
 
 
 .PHONY: Makefile
-Makefile: hack/devenvutil.sh #
+Makefile: hack/devenvutil.sh # FIXME don't do this all the time
 	echo -e "\nensuring Makefile is up to date"
 	cp -af Makefile hack/Makefile
 	$(call utils, assure_current hack/Makefile)

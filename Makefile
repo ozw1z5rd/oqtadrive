@@ -105,7 +105,8 @@ imgarduino:
 #
 ifeq ($(shell docker images --digests --quiet $(ARDUINO_CLI_IMAGE)),)
 	echo "building Arduino CLI image..."
-	docker build -t $(ARDUINO_CLI_IMAGE) -f ./hack/arduino-cli.Dockerfile .
+	docker build --build-arg BRANCH=$(BRANCH) -t $(ARDUINO_CLI_IMAGE) \
+		-f ./hack/arduino-cli.Dockerfile .
 	echo "image build done"
 endif
 

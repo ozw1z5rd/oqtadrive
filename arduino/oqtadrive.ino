@@ -89,6 +89,21 @@
 #define FORCE_IF1 false
 #define FORCE_QL  false
 
+/*
+    This is the baud rate of the serial link between adapter and daemon. It is
+    highly recommended to use the value defined here, which is the minimum speed
+    required for error free communication, and at the same time the maximum speed
+    at which an Arduino Nano can reliably operate the serial port. On some boards
+    used for running the daemon, such as the BananaPi M2 Zero, the 1 Mbps speed
+    is not available due to the combination of frequency and divider used to
+    clock its UART. For this platform, 500 kbps is currently being tested and
+    may work.
+
+    This is the only setting you do not need to include in a config header if
+    you want to keep the default.
+ */
+#define BAUD_RATE 1000000
+
 #endif
 // ----------------------------------- END OF CONFIG - START OF DANGER ZONE ---
 
@@ -271,7 +286,11 @@ void setup() {
 
 	// open channel to daemon & say hello
 	detectInterface(false, false);
-	Serial.begin(1000000, SERIAL_8N1); // 1Mbps is highest reliable rate
+#ifdef BAUD_RATE
+	Serial.begin(BAUD_RATE, SERIAL_8N1); // custom rate
+#else
+	Serial.begin(1000000, SERIAL_8N1); // 1 Mbps is highest reliable rate
+#endif
 	Serial.setTimeout(DAEMON_TIMEOUT);
 
 	// set up interrupts

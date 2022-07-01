@@ -31,9 +31,9 @@ import (
 
 //
 const runnerHelpPrologue = ""
-const runnerHelpEpilogue = `- When a flag can be set via environment variable, the variable name is given
-  in parenthesis at the end of the flag explanation. Note however that a flag,
-  when specified overrides an environment variable.
+const runnerHelpEpilogue = `- When a flag can be set via environment variable, the variable name is given in
+  parenthesis at the end of the flag explanation. Note however that a flag, when
+  specified overrides an environment variable.
 `
 
 /*

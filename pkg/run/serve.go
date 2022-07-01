@@ -39,14 +39,20 @@ func NewServe() *Serve {
 
 	s := &Serve{}
 	s.Runner = *NewRunner(
-		`serve -d|--device {device} [-a|--address {address}]  [-c|--client {if1|ql}]
-      [-r|--repo {repo base folder}]`,
+		`serve -d|--device {device} [-b|--baud-rate {bps}] [-a|--address {address}]
+       [-c|--client {if1|ql}] [-r|--repo {repo base folder}]`,
 		"daemon & API server command",
 		`Use the serve command for running the adapter daemon and API server. Optionally, you
-can specify whether the adapter should be configured for Interface 1 or QL after
-connecting to it. Note however that if the adapter is forced to a particular client
+can specify  whether the adapter  should be configured for  Interface 1 or QL  after
+connecting to it. Note however that if the adapter  is forced to a particular client
 in its configuration, then this cannot be changed.`,
-		"", `- Logging can be configured with these environment variables:
+		"", `- Setting the  baud rate is usually  only necessary for daemon hosts  that do not
+  support the default 1 Mbps, e.g. the BananaPi M2 Zero. Currently the only other
+  accepted speed is 500 kbps, which seems  to be working  but, is still in alpha.
+  Note that when setting the baud rate, the adapter needs to be programmed to the
+  same speed.
+
+- Logging can be configured with these environment variables:
 
   LOG_FORMAT		set to 'json' for JSON logging
   LOG_FORCE_COLORS	set to non-empty for forcing colorized log entries
@@ -58,6 +64,8 @@ in its configuration, then this cannot be changed.`,
 	s.AddBaseSettings()
 	s.AddSetting(&s.Device, "device", "d", "OQTADRIVE_DEVICE", nil,
 		"serial port device for adapter", true)
+	s.AddSetting(&s.BaudRate, "baud-rate", "b", "OQTADRIVE_BAUD_RATE", 1000000,
+		"serial port speed in bps", false)
 	s.AddSetting(&s.Client, "client", "c", "", nil,
 		"client type, 'if1' or 'ql'", false)
 	s.AddSetting(&s.Repository, "repo", "r", "", nil,
@@ -73,6 +81,7 @@ type Serve struct {
 	Runner
 	//
 	Device     string
+	BaudRate   uint
 	Client     string
 	Repository string
 }
@@ -89,10 +98,19 @@ func (s *Serve) Run() error {
 		}
 	}
 
+	switch s.BaudRate {
+	case 500000:
+		fallthrough
+	case 1000000:
+	default:
+		return fmt.Errorf(
+			"invalid baud rate, see 'oqtactl serve --help' for details")
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
-	d := daemon.NewDaemon(s.Device, cl)
+	d := daemon.NewDaemon(s.Device, s.BaudRate, cl)
 	go func() {
 		defer wg.Done()
 		err := d.Serve()

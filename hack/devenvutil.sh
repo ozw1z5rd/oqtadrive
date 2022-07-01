@@ -398,10 +398,10 @@ function manage_service {
                     extra_args+=" -r ${REPO}"
                 fi
                 curl -fsSL "${BASE_URL}/${BRANCH}/hack/oqtadrive.service" \
-                    | sed -E -e "s;^ExecStart=.*$;ExecStart=${OQTACTL} serve -d ${PORT} ${extra_args};g" \
+                    | sed -E -e "s;^ExecStart=.*$;ExecStart=${OQTACTL} serve -d ${PORT} -b ${BAUD_RATE} ${extra_args};g" \
                           -e "s;^WorkingDirectory=.*$;WorkingDirectory=${ROOT};g" \
                           -e "s;^User=.*$;User=${USER};g" \
-                          -e "s;^Environment=.*$;Environment=LOG_LEVEL=info PORT=${PORT} OLD_NANO=${OLD_NANO} RESET_PIN=${RESET_PIN} FQBN=${FQBN};g" \
+                          -e "s;^Environment=.*$;Environment=LOG_LEVEL=info PORT=${PORT} BAUD_RATE=${BAUD_RATE} OLD_NANO=${OLD_NANO} RESET_PIN=${RESET_PIN} FQBN=${FQBN};g" \
                     | sudo tee /etc/systemd/system/oqtadrive.service > /dev/null
                 sudo systemctl daemon-reload
                 ;;

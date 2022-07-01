@@ -54,6 +54,7 @@ type Daemon struct {
 	conduit     *conduit
 	forceClient client.Client
 	port        string
+	baudRate    uint
 	synced      bool
 	//
 	mru        *mru
@@ -66,10 +67,11 @@ type Daemon struct {
 }
 
 //
-func NewDaemon(port string, force client.Client) *Daemon {
+func NewDaemon(port string, baudRate uint, force client.Client) *Daemon {
 	return &Daemon{
 		cartridges:  make([]atomic.Value, DriveCount),
 		port:        port,
+		baudRate:    baudRate,
 		forceClient: force,
 		mru:         &mru{},
 		ctrlRun:     make(chan func() error),
@@ -170,7 +172,7 @@ func (d *Daemon) listen() error {
 //
 func (d *Daemon) ResetConduit() error {
 
-	logger := log.WithField("port", d.port)
+	logger := log.WithFields(log.Fields{"port": d.port, "baud rate": d.baudRate})
 	d.synced = false
 
 	if d.conduit != nil {
@@ -189,7 +191,7 @@ func (d *Daemon) ResetConduit() error {
 		if err := d.checkForStop(); err != nil {
 			return err
 		}
-		if con, err := newConduit(d.port); err != nil {
+		if con, err := newConduit(d.port, d.baudRate); err != nil {
 			if !quiet {
 				logger.Warnf("cannot open serial port: %v", err)
 			}

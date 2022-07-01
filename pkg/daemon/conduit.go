@@ -75,22 +75,22 @@ type conduit struct {
 }
 
 //
-func newConduit(port string) (*conduit, error) {
+func newConduit(port string, baudRate uint) (*conduit, error) {
 	ret := &conduit{
 		sendBuf:      make([]byte, sendBufferLength),
 		hwGroupStart: -1,
 		hwGroupEnd:   -1,
 	}
 	var err error
-	ret.port, err = openPort(port)
+	ret.port, err = openPort(port, baudRate)
 	return ret, err
 }
 
 //
-func openPort(p string) (io.ReadWriteCloser, error) {
+func openPort(p string, baudRate uint) (io.ReadWriteCloser, error) {
 	return serial.Open(serial.OpenOptions{
 		PortName:        p,
-		BaudRate:        1000000,
+		BaudRate:        baudRate,
 		DataBits:        8,
 		StopBits:        1,
 		MinimumReadSize: 1,
