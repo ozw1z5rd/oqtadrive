@@ -126,6 +126,16 @@ endif
 BASE_URL := https://github.com/xelalexv/oqtadrive/raw
 BRANCH ?= master
 
+define unattended_settings
+# OqtaDrive settings
+export PORT=$(PORT)
+export BAUD_RATE=$(BAUD_RATE)
+export OLD_NANO=$(OLD_NANO)
+export RESET_PIN=$(RESET_PIN)
+export FQBN=$(FQBN)
+export REPO=$(REPO)
+endef
+
 export
 
 #
@@ -137,6 +147,19 @@ help: sanity
 #	show this help
 #
 	$(call utils, synopsis) | more
+
+
+.PHONY: unattended_setup
+unattended_setup: unattended_packages install patch_avrdude flash service_on #
+	grep --quiet "OqtaDrive settings" ~/.bashrc \
+		|| echo "$${unattended_settings}" >> ~/.bashrc
+	touch .unattended_setup_completed
+
+
+.PHONY: unattended_packages
+unattended_packages: #
+	sudo apt-get install -y --no-install-recommends --fix-missing \
+		curl jq gawk strace gpiod
 
 
 .PHONY: install
@@ -304,6 +327,8 @@ Makefile: hack/devenvutil.sh # FIXME don't do this all the time
 
 hack/devenvutil.sh:
 	mkdir -p hack
+	# ensure network, for unattended setup
+	while ! ping -c 1 github.com > /dev/null 2>&1; do echo "waiting for network"; sleep 5; done
 	curl -fsSL -o hack/devenvutil.sh "$(BASE_URL)/$(BRANCH)/hack/devenvutil.sh"
 	chmod +x hack/devenvutil.sh
 
