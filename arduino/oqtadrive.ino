@@ -113,7 +113,7 @@
 	- _delay_us only takes compile time constants as argument
  */
 
-#define FIRMWARE_VERSION 21
+#define FIRMWARE_VERSION 22
 
 // Change this to true for a calibration run. When not connecting the adapter to
 // an Interface 1/QL during calibration, choose the desired interface via the

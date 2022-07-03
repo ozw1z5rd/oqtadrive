@@ -1,8 +1,12 @@
 # Install Guide (*Linux*)
 
-This guide shows you how to set up *OqtaDrive* using the installation `Makefile`. At the current stage of development, this only supports *Linux*. It *may* work on *MacOS*, and possibly in the *Linux* sub-system on *Windows*, but has not been tested there at all. Contributions in this area are very welcome! For the hardware, we'll be using [Tom Dalby's stand-alone setup](https://tomdalby.com/other/oqtadrive.html), which is based on a *RaspberryPi Zero W*. However, by skipping the steps that are particular for the *RaspberryPI*, the guide can essentially be used for any other setup using *Linux*. This guide has borrowed some input from Tom's guide linked above. Check it out to find out more about fine-tuning the *Pi* OS setup.
+This guide shows you how to set up *OqtaDrive* using the installation `Makefile`. At the current stage of development, this only supports *Linux*. It *may* work on *MacOS*, and possibly in the *Linux* sub-system on *Windows*, but has not been tested there at all. Contributions in this area are very welcome! For the hardware, we'll be using [Tom Dalby's stand-alone setup](https://tomdalby.com/other/oqtadrive.html), which is based on a *RaspberryPi Zero W*, version 1 or 2. However, by skipping the steps that are particular for the *RaspberryPI*, the guide can essentially be used for any other setup using *Linux*. This guide has borrowed some input from Tom's guide linked above. Check it out to find out more about fine-tuning the *Pi* OS setup.
 
 ## Preparing the *RaspberryPi*
+
+|  **Note**  |
+|-------------------------------------------|
+| Due to the currently limited availability of the *RaspberryPi Zero W*, we looked into alternatives and found that the *BananaPi M2 Zero* is (almost) a drop-in replacement for the standalone setup. Mechanically it perfectly fits onto the standalone PCB without any modifications. You just need to [follow slightly different steps for preparing it](prepare_bananapi.md).|
 
 - [Download the *Raspberry Pi OS* image](https://www.raspberrypi.org/software/operating-systems/), pick the *Raspberry Pi OS Lite* version, since you won't be needing a fully-fledged desktop system.
 

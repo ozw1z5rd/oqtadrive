@@ -93,7 +93,7 @@ func (a *api) upgrade(w http.ResponseWriter, req *http.Request) {
 	log.WithField("workdir", pwd).Info("upgrade process started")
 
 	sendReply([]byte("The upgrade was triggered. The daemon will go down soon "+
-		"and restart when the upgrade is done. Note that there won't be a "+
-		"notification about the completion of the upgrade."),
+		"and restart when the upgrade is done. There will be no notification "+
+		"about the completion of the upgrade."),
 		http.StatusOK, w)
 }

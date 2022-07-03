@@ -232,6 +232,7 @@ function download_ui {
         return
     fi
 
+    rm -rf "${ROOT}/ui.bak"
     mv -f "${ROOT}/ui" "${ROOT}/ui.bak"
 
     echo "  from ${url}"
@@ -327,7 +328,7 @@ function assure_current {
         if curl -fsSL -o "${current}" "${BASE_URL}/${BRANCH}/$1"; then
             # set to date of commit, but note that rd is in UTC, so we need to
             # convert to local time
-            touch --date="$(date --date="${rd}")" "${current}"
+            touch --date="$(date --date="${rd}" --iso-8601=seconds)" "${current}"
             chmod +x "${current}"
             [[ $# -gt 1 && "$2" == "copy" ]] || mv -f "${current}" "$1"
             echo "$1 updated"

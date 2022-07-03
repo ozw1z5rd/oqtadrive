@@ -314,7 +314,10 @@ current: hack/devenvutil.sh
 
 
 .PHONY: Makefile
-Makefile: hack/devenvutil.sh # FIXME don't do this all the time
+Makefile: hack/devenvutil.sh #
+# prevents running the check for every goal; add goals for which Makefile
+# should be checked to filter
+ifneq ($(filter upgrade current,$(MAKECMDGOALS)),)
 	echo -e "\nensuring Makefile is up to date"
 	cp -af Makefile hack/Makefile
 	$(call utils, assure_current hack/Makefile)
@@ -323,6 +326,7 @@ Makefile: hack/devenvutil.sh # FIXME don't do this all the time
 	else \
 		rm -f hack/Makefile; \
 	fi
+endif
 
 
 hack/devenvutil.sh:

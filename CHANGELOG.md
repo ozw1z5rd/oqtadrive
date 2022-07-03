@@ -1,7 +1,29 @@
 # Change Log
 
+## 0.3.1
+This release requires re-flashing the adapter. Protocol version remains at `4`, firmware version is now at `22`.
+
+### Overall
+- support using *BananaPi M2 Zero* in standalone setup; in particular, the baud rate of the serial link between adapter and daemon can now be set to 500 kbps instead of the default 1 Mbps
+- support for running a version upgrade from the web UI, including flashing of the adapter
+
+    Here a few notes about how to use this new feature:
+
+    + Upgrade from the web UI only works when the initial installation of *OqtaDrive* is done with the installer.
+    + If you already have an installation of *OqtaDrive* in version `0.3.0` or older, try below steps to migrate your installation to `0.3.1` so that upgrade via web UI works. From the installation folder, run:
+
+        ```
+        rm -rf Makefile hack/
+        curl -fsSL https://github.com/xelalexv/oqtadrive/raw/master/hack/Makefile -o Makefile
+        {your env vars for config} make service_off unpatch_avrdude patch_avrdude service_on upgrade
+        ```
+
+    Note that it is important to prefix the `make` command with your config settings (see `make help`)! If you did not previously patch `avrdude` in your setup, you can skip the two goals. If this upgrade procedure does not work, do a full re-installation of *OqtaDrive*.
+
+    *Tip*: Place all your environment variables for *OqtaDrive* installer configuration in your `.bashrc`.
+
 ## 0.3.0
-This release requires re-flashing the adapter. Protocol version is now at `4`.
+This release requires re-flashing the adapter. Protocol version is now at `4`, firmware version at `21`.
 
 ### Overall
 - added `make` target for compiling adapter firmware

@@ -64,7 +64,14 @@ func (v *Version) Run() error {
 //
 func PrintVersion(remote string) {
 	fmt.Printf(`
-OqtaDrive - dedicated to Sir Clive Sinclair (30 July 1940 - 16 September 2021)
+   ___        _        ____       _
+  / _ \  __ _| |_ __ _|  _ \ _ __(_)_   _____
+ | | | |/ _' | __/ _' | | | | '__| \ \ / / _ \
+ | |_| | (_| | || (_| | |_| | |  | |\ V /  __/
+  \___/ \__, |\__\__,_|____/|_|  |_| \_/ \___|
+           |_|
+
+ dedicated to Sir Clive Sinclair (30 July 1940 - 16 September 2021)
 
 oqtactl:    %s
 `, util.OqtaDriveVersion)
